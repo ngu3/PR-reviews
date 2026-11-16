@@ -1,0 +1,59 @@
+t24: KV cache pinned (num_gpu_blocks_override), two hosts, steady decode per step, 7 short/long pairs per point,
+two sessions per kind per host, interleaved (opposite orders on the two hosts). Candidate = fe5cbee (flag on), parent = 6cc233d90 (flag off).
+Pre-registered rule (before launch): the n=16 regression depends on the KV block count if, on both hosts, (candidate - parent) at
+n=16 with 9573 blocks exceeds (candidate - parent) with 9574 blocks by more than noise = max(|A/A| of the four kinds at n=16, 0.10%).
+
+### both arms at 9574 KV blocks: python3 tools/same_host_compare.py results/t24 --ref upbasek9574_off --arms up2k9574_on --points 1,15,16,64,255,256
+## host host-16  kv {"up2k9574_on_a1": [9574], "up2k9574_on_a2": [9574], "upbasek9574_off_a1": [9574], "upbasek9574_off_a2": [9574]}
+   n=  1 ref 5.3224 ms (A/A -0.186) | up2k9574_on -29.399% (A/A 0.384, noise 0.384; vs each ref -29.46, -29.33)
+   n= 15 ref 7.6763 ms (A/A -0.127) | up2k9574_on -2.530% (A/A 0.046, noise 0.127; vs each ref -2.59, -2.47)
+   n= 16 ref 7.6329 ms (A/A -0.125) | up2k9574_on +0.459% (A/A 0.063, noise 0.125; vs each ref +0.40, +0.52)
+   n= 64 ref 14.6175 ms (A/A 0.063) | up2k9574_on -0.244% (A/A 0.075, noise 0.100; vs each ref -0.21, -0.28)
+   n=255 ref 28.1693 ms (A/A 0.082) | up2k9574_on +0.126% (A/A -0.01, noise 0.100; vs each ref +0.17, +0.09)
+   n=256 ref 28.1469 ms (A/A 0.018) | up2k9574_on +0.347% (A/A -0.012, noise 0.100; vs each ref +0.36, +0.34)
+## host host-17  kv {"up2k9574_on_b1": [9574], "up2k9574_on_b2": [9574], "upbasek9574_off_b1": [9574], "upbasek9574_off_b2": [9574]}
+   n=  1 ref 5.3430 ms (A/A 0.015) | up2k9574_on -29.319% (A/A 0.238, noise 0.238; vs each ref -29.31, -29.32)
+   n= 15 ref 7.6679 ms (A/A 0.142) | up2k9574_on -2.526% (A/A 0.026, noise 0.142; vs each ref -2.46, -2.60)
+   n= 16 ref 7.6265 ms (A/A 0.164) | up2k9574_on +0.411% (A/A -0.074, noise 0.164; vs each ref +0.49, +0.33)
+   n= 64 ref 14.5714 ms (A/A 0.085) | up2k9574_on -0.353% (A/A 0.102, noise 0.102; vs each ref -0.31, -0.40)
+   n=255 ref 28.0643 ms (A/A 0.019) | up2k9574_on +0.079% (A/A -0.022, noise 0.100; vs each ref +0.09, +0.07)
+   n=256 ref 28.0353 ms (A/A -0.001) | up2k9574_on +0.325% (A/A -0.018, noise 0.100; vs each ref +0.33, +0.33)
+
+### both arms at 9573 KV blocks: python3 tools/same_host_compare.py results/t24 --ref upbasek9573_off --arms up2k9573_on --points 1,15,16,64,255,256
+## host host-16  kv {"up2k9573_on_a1": [9573], "up2k9573_on_a2": [9573], "upbasek9573_off_a1": [9573], "upbasek9573_off_a2": [9573]}
+   n=  1 ref 5.3264 ms (A/A 0.012) | up2k9573_on -28.334% (A/A -0.39, noise 0.390; vs each ref -28.33, -28.34)
+   n= 15 ref 7.6796 ms (A/A -0.023) | up2k9573_on -1.844% (A/A -0.215, noise 0.215; vs each ref -1.86, -1.83)
+   n= 16 ref 7.6358 ms (A/A -0.015) | up2k9573_on +1.157% (A/A -0.25, noise 0.250; vs each ref +1.15, +1.17)
+   n= 64 ref 14.4821 ms (A/A -0.077) | up2k9573_on +1.335% (A/A -0.015, noise 0.100; vs each ref +1.30, +1.37)
+   n=255 ref 28.2224 ms (A/A -0.015) | up2k9573_on -0.121% (A/A 0.041, noise 0.100; vs each ref -0.13, -0.11)
+   n=256 ref 28.1950 ms (A/A -0.011) | up2k9573_on +0.113% (A/A 0.051, noise 0.100; vs each ref +0.11, +0.12)
+## host host-17  kv {"up2k9573_on_b1": [9573], "up2k9573_on_b2": [9573], "upbasek9573_off_b1": [9573], "upbasek9573_off_b2": [9573]}
+   n=  1 ref 5.3429 ms (A/A 0.355) | up2k9573_on -28.543% (A/A 0.658, noise 0.658; vs each ref -28.42, -28.67)
+   n= 15 ref 7.6733 ms (A/A 0.086) | up2k9573_on -2.024% (A/A 0.316, noise 0.316; vs each ref -1.98, -2.07)
+   n= 16 ref 7.6288 ms (A/A 0.078) | up2k9573_on +0.945% (A/A 0.316, noise 0.316; vs each ref +0.98, +0.91)
+   n= 64 ref 14.4262 ms (A/A 0.008) | up2k9573_on +1.237% (A/A 0.145, noise 0.145; vs each ref +1.24, +1.23)
+   n=255 ref 28.1082 ms (A/A -0.055) | up2k9573_on -0.177% (A/A 0.033, noise 0.100; vs each ref -0.20, -0.15)
+   n=256 ref 28.0816 ms (A/A -0.051) | up2k9573_on +0.070% (A/A 0.016, noise 0.100; vs each ref +0.04, +0.10)
+
+### all kinds against the parent at 9574 blocks: python3 tools/same_host_compare.py results/t24 --ref upbasek9574_off --arms upbasek9573_off,up2k9574_on,up2k9573_on --points 1,15,16,64,255,256
+## host host-16  kv {"up2k9573_on_a1": [9573], "up2k9573_on_a2": [9573], "up2k9574_on_a1": [9574], "up2k9574_on_a2": [9574], "upbasek9573_off_a1": [9573], "upbasek9573_off_a2": [9573], "upbasek9574_off_a1": [9574], "upbasek9574_off_a2": [9574]}
+   n=  1 ref 5.3224 ms (A/A -0.186) | upbasek9573_off +0.076% (A/A 0.012, noise 0.186; vs each ref -0.02, +0.17) | up2k9574_on -29.399% (A/A 0.384, noise 0.384; vs each ref -29.46, -29.33) | up2k9573_on -28.280% (A/A -0.39, noise 0.390; vs each ref -28.35, -28.21)
+   n= 15 ref 7.6763 ms (A/A -0.127) | upbasek9573_off +0.042% (A/A -0.023, noise 0.127; vs each ref -0.02, +0.11) | up2k9574_on -2.530% (A/A 0.046, noise 0.127; vs each ref -2.59, -2.47) | up2k9573_on -1.803% (A/A -0.215, noise 0.215; vs each ref -1.87, -1.74)
+   n= 16 ref 7.6329 ms (A/A -0.125) | upbasek9573_off +0.038% (A/A -0.015, noise 0.125; vs each ref -0.03, +0.10) | up2k9574_on +0.459% (A/A 0.063, noise 0.125; vs each ref +0.40, +0.52) | up2k9573_on +1.195% (A/A -0.25, noise 0.250; vs each ref +1.13, +1.26)
+   n= 64 ref 14.6175 ms (A/A 0.063) | upbasek9573_off -0.927% (A/A -0.077, noise 0.100; vs each ref -0.90, -0.96) | up2k9574_on -0.244% (A/A 0.075, noise 0.100; vs each ref -0.21, -0.28) | up2k9573_on +0.396% (A/A -0.015, noise 0.100; vs each ref +0.43, +0.36)
+   n=255 ref 28.1693 ms (A/A 0.082) | upbasek9573_off +0.189% (A/A -0.015, noise 0.100; vs each ref +0.23, +0.15) | up2k9574_on +0.126% (A/A -0.01, noise 0.100; vs each ref +0.17, +0.09) | up2k9573_on +0.068% (A/A 0.041, noise 0.100; vs each ref +0.11, +0.03)
+   n=256 ref 28.1469 ms (A/A 0.018) | upbasek9573_off +0.171% (A/A -0.011, noise 0.100; vs each ref +0.18, +0.16) | up2k9574_on +0.347% (A/A -0.012, noise 0.100; vs each ref +0.36, +0.34) | up2k9573_on +0.284% (A/A 0.051, noise 0.100; vs each ref +0.29, +0.28)
+## host host-17  kv {"up2k9573_on_b1": [9573], "up2k9573_on_b2": [9573], "up2k9574_on_b1": [9574], "up2k9574_on_b2": [9574], "upbasek9573_off_b1": [9573], "upbasek9573_off_b2": [9573], "upbasek9574_off_b1": [9574], "upbasek9574_off_b2": [9574]}
+   n=  1 ref 5.3430 ms (A/A 0.015) | upbasek9573_off -0.003% (A/A 0.355, noise 0.355; vs each ref +0.01, -0.01) | up2k9574_on -29.319% (A/A 0.238, noise 0.238; vs each ref -29.31, -29.32) | up2k9573_on -28.545% (A/A 0.658, noise 0.658; vs each ref -28.54, -28.55)
+   n= 15 ref 7.6679 ms (A/A 0.142) | upbasek9573_off +0.070% (A/A 0.086, noise 0.142; vs each ref +0.14, -0.00) | up2k9574_on -2.526% (A/A 0.026, noise 0.142; vs each ref -2.46, -2.60) | up2k9573_on -1.955% (A/A 0.316, noise 0.316; vs each ref -1.89, -2.02)
+   n= 16 ref 7.6265 ms (A/A 0.164) | upbasek9573_off +0.030% (A/A 0.078, noise 0.164; vs each ref +0.11, -0.05) | up2k9574_on +0.411% (A/A -0.074, noise 0.164; vs each ref +0.49, +0.33) | up2k9573_on +0.975% (A/A 0.316, noise 0.316; vs each ref +1.06, +0.89)
+   n= 64 ref 14.5714 ms (A/A 0.085) | upbasek9573_off -0.996% (A/A 0.008, noise 0.100; vs each ref -0.95, -1.04) | up2k9574_on -0.353% (A/A 0.102, noise 0.102; vs each ref -0.31, -0.40) | up2k9573_on +0.228% (A/A 0.145, noise 0.145; vs each ref +0.27, +0.19)
+   n=255 ref 28.0643 ms (A/A 0.019) | upbasek9573_off +0.157% (A/A -0.055, noise 0.100; vs each ref +0.17, +0.15) | up2k9574_on +0.079% (A/A -0.022, noise 0.100; vs each ref +0.09, +0.07) | up2k9573_on -0.021% (A/A 0.033, noise 0.100; vs each ref -0.01, -0.03)
+   n=256 ref 28.0353 ms (A/A -0.001) | upbasek9573_off +0.165% (A/A -0.051, noise 0.100; vs each ref +0.17, +0.17) | up2k9574_on +0.325% (A/A -0.018, noise 0.100; vs each ref +0.33, +0.33) | up2k9573_on +0.235% (A/A 0.016, noise 0.100; vs each ref +0.23, +0.24)
+
+### verdict (pre-registered rule)
+host-16: n=16 delta at 9573 (+1.157%) - delta at 9574 (+0.459%) = 0.70 pp; noise = max(|A/A| of the four kinds at n=16) = 0.25 -> holds
+host-17: n=16 delta at 9573 (+0.945%) - delta at 9574 (+0.411%) = 0.53 pp; noise = 0.32 -> holds
+=> On both hosts the n=16 regression depends on the KV block count. With the same block count for both arms the candidate is
+   +0.41% / +0.46% at n=16 with 9574 blocks (beyond noise 0.16 / 0.13) and +0.95% / +1.16% with 9573 blocks.
+   The block count also moves the parent alone (9573 vs 9574): n=64 -1.00% / -0.93%, n=255 / n=256 +0.16% to +0.19%.

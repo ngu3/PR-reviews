@@ -1,0 +1,35 @@
+t25 s1 / s2: decode time of the head 056cee01c (up3) against fe5cbee79 (up2, before the review fixes) and the parent
+(upbase), KV cache pinned to 9,574 blocks for every arm, two hosts, ABBA order (s1: up2 up3 base up3 up2; s2: up3 up2 base
+up2 up3), steady decode per step = (t(545) - t(33)) / 512, median of 5 pairs per point.
+Pre-registered (2026-11-16 13:05 UTC): up3 matches up2 if on both hosts |mean(up3) / mean(up2) - 1| at every n is within
+noise = max(|A/A up2|, |A/A up3|, 0.10%).
+
+$ python3 tools/same_host_compare.py results/t25 --ref up2k9574_on --arms up3k9574_on,upbasek9574_off --points 1,16,64,256
+## host host-22  kv {"up2k9574_on_a1": [9574], "up2k9574_on_a2": [9574], "up3k9574_on_a1": [9574], "up3k9574_on_a2": [9574], "upbasek9574_off_a1": [9574]}
+   n=  1 ref 3.7928 ms (A/A -0.959) | up3k9574_on +1.146% (A/A 1.397, noise 1.397; vs each ref +0.66, +1.64) | upbasek9574_off +41.473% (A/A None, noise 0.959; vs each ref +40.79, +42.16)
+   n= 16 ref 7.6738 ms (A/A -0.161) | up3k9574_on +0.145% (A/A -0.204, noise 0.204; vs each ref +0.06, +0.23) | upbasek9574_off -0.203% (A/A None, noise 0.161; vs each ref -0.28, -0.12)
+   n= 64 ref 14.5706 ms (A/A -0.025) | up3k9574_on +0.106% (A/A -0.035, noise 0.100; vs each ref +0.09, +0.12) | upbasek9574_off +0.432% (A/A None, noise 0.100; vs each ref +0.42, +0.45)
+   n=256 ref 28.2500 ms (A/A -0.01) | up3k9574_on +0.030% (A/A 0.005, noise 0.100; vs each ref +0.03, +0.04) | upbasek9574_off -0.296% (A/A None, noise 0.100; vs each ref -0.30, -0.29)
+## host host-23  kv {"up2k9574_on_b1": [9574], "up2k9574_on_b2": [9574], "up3k9574_on_b1": [9574], "up3k9574_on_b2": [9574], "upbasek9574_off_b1": [9574]}
+   n=  1 ref 3.7829 ms (A/A 0.152) | up3k9574_on +0.416% (A/A -0.193, noise 0.193; vs each ref +0.49, +0.34) | upbasek9574_off +41.771% (A/A None, noise 0.152; vs each ref +41.88, +41.66)
+   n= 16 ref 7.6891 ms (A/A 0.09) | up3k9574_on +0.064% (A/A 0.156, noise 0.156; vs each ref +0.11, +0.02) | upbasek9574_off -0.495% (A/A None, noise 0.100; vs each ref -0.45, -0.54)
+   n= 64 ref 14.6044 ms (A/A 0.005) | up3k9574_on -0.060% (A/A 0.111, noise 0.111; vs each ref -0.06, -0.06) | upbasek9574_off +0.216% (A/A None, noise 0.100; vs each ref +0.22, +0.21)
+   n=256 ref 28.2719 ms (A/A 0.027) | up3k9574_on +0.008% (A/A 0.034, noise 0.100; vs each ref +0.02, -0.01) | upbasek9574_off -0.324% (A/A None, noise 0.100; vs each ref -0.31, -0.34)
+
+### verdict (pre-registered rule)
+host-23 (s2 order): n=1 +0.42% (noise 0.19) -> outside; n=16 +0.06% (0.16), n=64 -0.06% (0.11), n=256 +0.01% (0.10) -> within
+host-22 (s1 order): n=1 +1.15% (noise 1.40), n=16 +0.15% (0.20), n=256 +0.03% (0.10) -> within; n=64 +0.11% (0.10) -> outside
+=> The rule is not met: 2 of the 8 (host, n) points are outside noise (n=1 on host-23; n=64 on host-22, by 0.006 percentage
+   points). n=16 and n=256 are within noise on both hosts.
+   The HLO comparison (t25 h1, summaries/hlo_t25_fix_vs_prev_head.txt) shows the decode programs of every bucket are
+   identical in the two trees, so the two outside points are differences between sessions of the same programs.
+
+### profile session (p1): head vs parent, both at 9,573 blocks, one session each, 3 pairs per point
+$ python3 tools/same_host_compare.py results/t25/p1-profile-steady --ref upbasek9573_off --arms up3k9573_on --points 1,15,16,64,255,256
+## host host-21  kv {"up3k9573_on_p1": [9573], "upbasek9573_off_p1": [9573]}
+   n=  1 ref 5.3432 ms (A/A None) | up3k9573_on -28.662% (A/A None, noise 0.100; vs each ref -28.66)
+   n= 15 ref 7.6894 ms (A/A None) | up3k9573_on -1.953% (A/A None, noise 0.100; vs each ref -1.95)
+   n= 16 ref 7.6479 ms (A/A None) | up3k9573_on +0.890% (A/A None, noise 0.100; vs each ref +0.89)
+   n= 64 ref 14.4965 ms (A/A None) | up3k9573_on +1.313% (A/A None, noise 0.100; vs each ref +1.31)
+   n=255 ref 28.2287 ms (A/A None) | up3k9573_on -0.069% (A/A None, noise 0.100; vs each ref -0.07)
+   n=256 ref 28.2080 ms (A/A None) | up3k9573_on +0.148% (A/A None, noise 0.100; vs each ref +0.15)

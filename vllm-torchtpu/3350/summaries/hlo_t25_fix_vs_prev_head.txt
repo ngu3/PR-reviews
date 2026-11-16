@@ -1,0 +1,21 @@
+t25 h1: do the review fixes change any compiled program? XLA dumps (MSKIP_XLA_DUMP=1) of fe5cbee79 (up2) and the head
+056cee01c (up3), flag on, KV pinned to 9,574 blocks, same host, each arm a fresh engine running the numerics phase.
+The dumps (~400 MB each) are not included; the comparison tool is tools/hlo_dump_compare.py.
+
+$ python3 tools/hlo_dump_compare.py <up2k9574_on_h1 dump> <up3k9574_on_h1 dump>
+A up2k9574_on_h1: 201 after_optimizations files, 201 distinct normalized programs
+B up3k9574_on_h1: 203 after_optimizations files, 203 distinct normalized programs
+common (multiset): 200; only in A: 1; only in B: 3
+  only in A: bf745e66452ffe47 x1 14086 chars  e.g. module_0034.tt_jit_pallas_L1350C0___call___call_custom_kernel_custom_kernel.cl_994787025.after_optimizations.txt
+  only in B: 11784a3f59c7e0b2 x1 5340 chars  e.g. module_2121.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in B: 28611abfbe475157 x1 4905 chars  e.g. module_2113.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in B: 28e30d1c0b78f076 x1 468 chars  e.g. module_0003.tt_jit_to_copy_copy__torchtpu_internal_zero_size.cl_994787025.after_optimizations.txt
+rc=1
+
+Reading:
+- The 9 decode backbone programs (one per token bucket; modules *fused_add_rms_norm*) are identical in both arms after
+  masking debug info (source paths, line tables, metadata). So are 191 other compiled modules.
+- Only in up2: the KV-pool block-copy kernel for 32 indices (both arms compiled the 8 / 128 / 512 / 2048 variants).
+- Only in up3: two small gather + logits programs for 8 and 16 rows and a zero-size copy.
+- Most likely these are helpers compiled lazily on first use, so which ones a session compiles depends on what it ran;
+  the review fixes do not touch these paths.

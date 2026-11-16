@@ -12,6 +12,8 @@ Without --phases the phases recorded in the file's meta are checked. A phase is 
             short / long wall times, each long run slower than its short run;
   rollout   wall_s holds 3 repeats and best is set;
   profile   every n in meta.profile_ns has a profiled batch (the traces themselves are checked by prof_mskip.py);
+  tailprof  the shrinking-batch trace ran (wall_s set);
+  quality   greedy and sampled passes each hold n rows with token ids and finish reasons, and both accuracies;
   switch    one batch per entry of meta.switch_seq, in that order, with n rows each, every row complete as in
             numerics;
   graphsel  two passes, each with one batch per entry of meta.graphsel_seq in that order, and every batch has a
@@ -190,6 +192,23 @@ def problems(d, phases=None):
         for n in meta.get("profile_ns") or list(prof) or ["?"]:
             if (prof.get(str(n)) or {}).get("wall_s") is None:
                 out.append(f"profile: n={n} missing")
+    if "tailprof" in phases:
+        if (d.get("tailprof") or {}).get("wall_s") is None:
+            out.append("tailprof: missing")
+    if "quality" in phases:
+        q = d.get("quality") or {}
+        for name in ("greedy", "sampled"):
+            v = q.get(name)
+            if v is None:
+                out.append(f"quality: {name} missing")
+                continue
+            rows = v.get("rows") or []
+            if not rows or len(rows) != v.get("n"):
+                out.append(f"quality: {name} has {len(rows)} rows, expected {v.get('n')}")
+            elif any(not r.get("token_ids") or not r.get("finish_reason") for r in rows):
+                out.append(f"quality: {name} has a row without token ids or finish reason")
+            if not _finite_number(v.get("acc_strict")) or not _finite_number(v.get("acc_flexible")):
+                out.append(f"quality: {name} lacks accuracy")
     return out
 
 

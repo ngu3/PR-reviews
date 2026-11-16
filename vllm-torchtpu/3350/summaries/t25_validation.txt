@@ -1,0 +1,72 @@
+t25: validation of the head 056cee01c (tree up3 = fe5cbee79 + the review fixes) against the parent 6cc233d90 (upbase).
+Same image as the other runs; each group ran its arms one after another on one TPU v7x 2x2x1 host, TP=4.
+
+### Unit tests and full type check (q0)
+pytest up3 rc=0 1165 passed, 35 warnings in 375.77s (0:06:15)
+typecheck up3 rc=0 pyrefly: 305 errors, each matched by one entry in .pyrefly-baseline-full.json.
+pytest upbase rc=0 1094 passed, 35 warnings in 352.10s (0:05:52)
+typecheck upbase rc=0 pyrefly: 305 errors, each matched by one entry in .pyrefly-baseline-full.json.
+
+### Direct MoE check, enum API (q0)
+results/t25/q0-unit-n2/n2_up3.json.gz: ok= True cases= 45 failed= [] row_filter_api= enum buckets= 16:0,1,5,12,15,16;32:17,24,31,32;64:33,64;256:250,255,256 seeds= 0,1,2
+
+### TP=4 numerics + switching sequence, head on / off vs parent (q1)
+$ python3 tools/analyze_mskip.py results/t25/q1-correctness-quality --check --ref upbase_off_f1
+bit-identical groups: [['up3_off_f1', 'up3_on_f1', 'upbase_off_f1']]
+CHECK PASS (2 runs against upbase_off_f1; differ: none)
+$ python3 tools/n1_compare.py results/t25/q1-correctness-quality --ref upbase_off_f1 --arms up3_on_f1,up3_off_f1
+N1 PASS: 2 arms vs upbase_off_f1; sequence [16, 10, 16, 1, 16, 15, 12, 16, 3, 17, 32, 16, 256, 250, 255, 256]; 51382 reference tokens
+
+### GSM8K quality, all 1,319 test prompts, greedy and sampled (q1)
+$ python3 tools/quality_compare.py results/t25/q1-correctness-quality --ref upbase_off --arms up3_on,up3_off
+## greedy (temperature 0.0, max_tokens 2048, n 1319)
+   upbase_off_f1            strict 783/1319 (59.36%)  flexible 991/1319 (75.13%)  tokens 1745232  cut at max_tokens 250
+   up3_on_f1                strict 783/1319 (59.36%)  flexible 991/1319 (75.13%)  tokens 1745232  cut at max_tokens 250  | vs upbase_off_f1: identical token ids 1319/1319, same answer 1319
+   up3_off_f1               strict 783/1319 (59.36%)  flexible 991/1319 (75.13%)  tokens 1745232  cut at max_tokens 250  | vs upbase_off_f1: identical token ids 1319/1319, same answer 1319
+## sampled (temperature 1.0, max_tokens 2048, n 1319)
+   upbase_off_f1            strict 670/1319 (50.80%)  flexible 877/1319 (66.49%)  tokens 1917708  cut at max_tokens 384
+   up3_on_f1                strict 670/1319 (50.80%)  flexible 877/1319 (66.49%)  tokens 1917708  cut at max_tokens 384  | vs upbase_off_f1: identical token ids 1319/1319, same answer 1319
+   up3_off_f1               strict 670/1319 (50.80%)  flexible 877/1319 (66.49%)  tokens 1917708  cut at max_tokens 384  | vs upbase_off_f1: identical token ids 1319/1319, same answer 1319
+
+### TP=4 + EP fallback, flag on (e1)
+$ python3 tools/analyze_mskip.py results/t25/e1-ep-fallback --check --ref upbase_off_e1
+bit-identical groups: [['up3_on_e1', 'upbase_off_e1']]
+CHECK PASS (1 runs against upbase_off_e1; differ: none)
+N1 PASS: 1 arms vs upbase_off_e1; sequence [16, 10, 16, 1, 16, 15, 12, 16, 3, 17, 32, 16]; 25762 reference tokens
+
+### MTP drafter (method mtp, 1 speculative token, dummy weights), flag on (m1)
+$ python3 tools/analyze_mskip.py results/t25/m1-mtp-drafter --check --ref upbase_off_m1
+bit-identical groups: [['up3_on_m1', 'upbase_off_m1']]
+CHECK PASS (1 runs against upbase_off_m1; differ: none)
+up2_on_m1 (fe5cbee79, the head before the review fixes) has no result file: the engine failed during warmup.
+Excerpt of its log (worker rank 3; the other ranks show the same):
+  File "/opt/arm-up2/src/vllm_torchtpu/runner/tpu_runner.py", line 8657, in _warmup_one_spec_request
+    self.sample_tokens(None)
+  File "/opt/arm-up2/src/vllm_torchtpu/runner/tpu_runner.py", line 5772, in sample_tokens
+    eagle3_drafts = self.spec_decode_manager.propose_draft_token_ids(
+  File "/opt/arm-up2/src/vllm_torchtpu/runner/speculative_decoding_manager.py", line 248, in propose_draft_token_ids
+    result = drafter.propose(
+  File "/opt/arm-up2/src/vllm_torchtpu/spec_decode/eagle3.py", line 1308, in propose
+    last_hidden, hidden = self._forward_draft(
+  File "/opt/arm-up2/src/vllm_torchtpu/spec_decode/eagle3.py", line 2135, in _forward_draft
+    out = model(**kwargs)
+  File "/usr/local/lib/python3.12/site-packages/vllm/compilation/decorators.py", line 705, in __call__
+    self.aot_compiled_fn = self.aot_compile(*args, **kwargs)
+  File "/usr/local/lib/python3.12/site-packages/vllm/compilation/wrapper.py", line 190, in aot_compile
+    return self._compiled_callable.aot_compile((args, kwargs))
+  File "/usr/local/lib/python3.12/site-packages/torch/_dynamo/eval_frame.py", line 964, in aot_compile
+  File "/usr/local/lib/python3.12/site-packages/torch/_dynamo/aot_compile.py", line 344, in aot_compile_fullgraph
+  File "/usr/local/lib/python3.12/site-packages/torch/_dynamo/convert_frame.py", line 1422, in fullgraph_capture
+  File "/usr/local/lib/python3.12/site-packages/torch/_dynamo/convert_frame.py", line 1493, in _fullgraph_capture_frame
+  Developer debug context: raised exception RuntimeError('BF16 MoeSkip count mode requires TokenPaddingState with track_valid_tokens=True.')
+ARM up2_on_m1 start tree=up2 flag=on phases=numerics inproc=1 2026-11-16T13:34:15Z
+ARM up2_on_m1 engine_rc=1 status=1 end 2026-11-16T13:41:56Z
+
+### Policy, valid-token count, KV blocks and compiled programs reported by the workers (rank 0)
+up3_on_e1        flag=True  policy={'enabled': False, 'fallback_reason': 'expert parallelism', 'padding_mode': 'stock'} track_valid_tokens=False kv_blocks=9570 programs 190 -> 251
+upbase_off_e1    flag=False policy=None track_valid_tokens=False kv_blocks=9570 programs 190 -> 251
+up3_on_m1        flag=True  policy={'enabled': False, 'fallback_reason': 'speculative decoding', 'padding_mode': 'stock'} track_valid_tokens=False kv_blocks=8631 programs 4104 -> 4122
+upbase_off_m1    flag=False policy=None track_valid_tokens=False kv_blocks=8631 programs 4104 -> 4122
+up3_off_f1       flag=False policy={'enabled': False, 'fallback_reason': None, 'padding_mode': 'stock'} track_valid_tokens=False kv_blocks=9574 programs 190 -> 556
+up3_on_f1        flag=True  policy={'enabled': True, 'fallback_reason': None, 'padding_mode': 'row_count'} track_valid_tokens=True kv_blocks=9573 programs 190 -> 556
+upbase_off_f1    flag=False policy=None track_valid_tokens=False kv_blocks=9574 programs 190 -> 556

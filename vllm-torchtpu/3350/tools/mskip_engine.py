@@ -18,6 +18,13 @@ One engine start runs three phases and writes <out>/<label>.json:
             --switch-seq (full 16-row bucket, padded, full again, different padding, other buckets), greedy, natural
             EOS, --switch-max-tokens new tokens; token ids, chosen-token logprobs and finish reasons per request.
             Requests finish at different steps, so the number of active rows also changes inside a batch.
+  quality   final-version quality check: every GSM8K test prompt (or the first --quality-limit), natural EOS,
+            --quality-max-tokens new tokens, twice: greedy and sampled (temperature 1.0, top_p 1.0; TPU has no
+            per-request seed, so the engine seed and the identical request order fix the samples). Per request the
+            token ids, finish reason and the extracted answer (verl's GSM8K rule: strict "#### <number>" and flexible
+            last number, over the last 300 characters); per pass the accuracy against reward_model.ground_truth.
+  tailprof  device trace of one shrinking batch: --tailprof-n requests, request j with max_tokens 2 (j + 1), ignore_eos,
+            so the active rows drop by one every two decode steps through partial buckets of every size.
   graphsel  TPU_MOE_SKIP_STOCK_GRAPH (dual graph): which graph each step ran on and whether anything compiled.
             Batches of the first n prompts in the order of --graphsel-seq, --graphsel-steps decode steps each
             (ignore_eos, so every decode step has n valid rows), the whole sequence twice. Before and after every
@@ -66,6 +73,12 @@ ap.add_argument("--graphsel-seq", default="12,13,14,15,16,17,16,12,15,13,16,14,1
 ap.add_argument("--graphsel-steps", type=int, default=32, help="decode steps per graphsel batch")
 ap.add_argument("--prefill-mixed-reps", type=int, default=5,
                 help="timed repeats per sub-workload in the prefill_mixed phase")
+ap.add_argument("--quality-max-tokens", type=int, default=2048)
+ap.add_argument("--quality-limit", type=int, default=0, help="first N GSM8K test prompts in the quality phase; 0 = all")
+ap.add_argument("--tailprof-n", type=int, default=32, help="requests of the tailprof batch")
+ap.add_argument("--speculative", help="METHOD:N -> LLM(speculative_config={method, num_speculative_tokens: N}), "
+                                      "e.g. mtp:1 (no quotes, so it passes through the pod's EXTRA)")
+ap.add_argument("--load-format", help="LLM(load_format=...), e.g. dummy (random weights, same seed in every arm)")
 ap.add_argument("--probe-workers", action="store_true",
                 help="collect worker_report (stock_graph, bf16_policy, kv_num_blocks, programs) after start and at end")
 a = ap.parse_args()
@@ -103,9 +116,10 @@ meta = dict(label=a.label, host=os.uname().nodename, node=os.environ.get("NODE_N
             vllm=vllm.__version__, vllm_torchtpu_file=vllm_torchtpu.__file__,
             moe_skip_env=os.environ.get("TPU_MOE_SKIP_PADDED_TOKENS"),
             moe_skip_flag=bool(vtt_envs.TPU_MOE_SKIP_PADDED_TOKENS),
-            unquantized_has_fix=("zero_routing_weights_for_padding" in src) or ("_padding_rows" in src),
+            unquantized_has_fix=("zero_routing_weights_for_padding" in src) or ("_padding_rows" in src)
+                                or ("PaddedRowFilter.ROW_COUNT" in src),
             unquantized_mode=(
-                "gcount" if "_padding_rows" in src
+                "gcount" if ("_padding_rows" in src or "PaddedRowFilter.ROW_COUNT" in src)
                 else ("zero_weights" if "zero_routing_weights_for_padding" in src else "stock")
             ),
             sha256_16={r: sha(r) for r in ("envs.py", "layers/adapter/quantization/unquantized.py",
@@ -130,15 +144,22 @@ meta = dict(label=a.label, host=os.uname().nodename, node=os.environ.get("NODE_N
             switch_seq=[int(x) for x in a.switch_seq.split(",")], switch_max_tokens=a.switch_max_tokens,
             switch_stagger=a.switch_stagger, ep=a.ep,
             moe_collection_chunk_size=os.environ.get("TPU_MOE_COLLECTION_CHUNK_SIZE"),
-            num_gpu_blocks_override=os.environ.get("MSKIP_NUM_GPU_BLOCKS"))
+            num_gpu_blocks_override=os.environ.get("MSKIP_NUM_GPU_BLOCKS"),
+            speculative=a.speculative, load_format=a.load_format,
+            quality_max_tokens=a.quality_max_tokens, quality_limit=a.quality_limit, tailprof_n=a.tailprof_n)
 print("META", json.dumps(meta), flush=True)
 
 df = pd.read_parquet(a.data)
 prof_dir = a.profile_dir or os.path.join(a.out, "prof", a.label)
 extra_llm = {}
-if "profile" in phases:
+if "profile" in phases or "tailprof" in phases:
     # vLLM profiler API; on TPU each worker writes an XSpace (<dir>/<prefix>/plugins/profile/<ts>/*.xplane.pb).
     extra_llm["profiler_config"] = {"profiler": "torch", "torch_profiler_dir": prof_dir}
+if a.speculative:
+    _method, _num = a.speculative.split(":")
+    extra_llm["speculative_config"] = {"method": _method, "num_speculative_tokens": int(_num)}
+if a.load_format:
+    extra_llm["load_format"] = a.load_format
 if a.ep:
     extra_llm["enable_expert_parallel"] = True
 if os.environ.get("MSKIP_NUM_GPU_BLOCKS"):
@@ -172,7 +193,10 @@ def worker_report(worker):
     return dict(
         rank=getattr(worker, "rank", None),
         stock_graph=dispatch.stats() if dispatch is not None else None,
-        bf16_policy=policy.as_dict() if policy is not None and hasattr(policy, "as_dict") else None,
+        # Serialized here: the upstream policy no longer has as_dict(); older trees did.
+        bf16_policy=(None if policy is None else dict(
+            enabled=bool(policy.enabled), fallback_reason=policy.fallback_reason,
+            padding_mode="row_count" if policy.enabled else "stock")),
         track_valid_count=(pad_state is not None and (getattr(pad_state, "local_num_valid", None) is not None
                                                       or getattr(pad_state, "local_valid_tokens", None) is not None)),
         kv_num_blocks=getattr(kv_cfg, "num_blocks", None),
@@ -345,6 +369,63 @@ if "profile" in phases:
         llm.stop_profile()
         result["profile"][n] = dict(wall_s=wall, steps=a.profile_steps, dir=prof_dir)
         print("PROFILE", n, f"{wall:.3f}s", flush=True)
+        save()
+
+if "tailprof" in phases:
+    n = a.tailprof_n
+    sps = [SamplingParams(temperature=0.0, max_tokens=2 * (j + 1), ignore_eos=True) for j in range(n)]
+    timed(prompts[:n], sps)  # warm-up / compile of every bucket on the way down
+    try:
+        llm.start_profile(profile_prefix="tail")
+    except TypeError:
+        llm.start_profile()
+    time.sleep(1.0)
+    wall = timed(prompts[:n], sps)
+    llm.stop_profile()
+    result["tailprof"] = dict(wall_s=wall, n=n, max_tokens=[2 * (j + 1) for j in range(n)], dir=prof_dir)
+    print("TAILPROF", n, f"{wall:.3f}s", flush=True)
+    save()
+
+if "quality" in phases:
+    import re  # noqa: E402
+
+    def gsm8k_answer(text, method):
+        """verl's GSM8K extraction over the last 300 characters."""
+        text = text[-300:]
+        if method == "strict":
+            found = re.findall("#### (\\-?[0-9\\.\\,]+)", text)
+            return found[-1].replace(",", "").replace("$", "") if found else None
+        for x in reversed(re.findall("(\\-?[0-9\\.\\,]+)", text)):
+            if x not in ("", "."):
+                return x
+        return None
+
+    qn = len(df) if a.quality_limit <= 0 else min(a.quality_limit, len(df))
+    qprompts = [tok.apply_chat_template(list(m), tokenize=False, add_generation_prompt=True)
+                for m in df["prompt"][:qn]]
+    truths = [str(r["ground_truth"]) for r in df["reward_model"][:qn]]
+    result["quality"] = {}
+    for name, sp in (("greedy", SamplingParams(temperature=0.0, max_tokens=a.quality_max_tokens)),
+                     ("sampled", SamplingParams(temperature=1.0, top_p=1.0, max_tokens=a.quality_max_tokens))):
+        s = time.perf_counter()
+        outs = llm.generate(qprompts, sp, use_tqdm=False)
+        secs = time.perf_counter() - s
+        rows, strict, flexible = [], 0, 0
+        for o, truth in zip(outs, truths):
+            c = o.outputs[0]
+            ps, pf = gsm8k_answer(c.text, "strict"), gsm8k_answer(c.text, "flexible")
+            strict += ps == truth
+            flexible += pf == truth
+            rows.append(dict(prompt_sha=hashlib.sha256(o.prompt.encode()).hexdigest()[:16],
+                             token_ids=list(c.token_ids), finish_reason=c.finish_reason,
+                             pred_strict=ps, pred_flexible=pf, truth=truth))
+        result["quality"][name] = dict(
+            n=qn, acc_strict=strict / qn, acc_flexible=flexible / qn, correct_strict=strict,
+            correct_flexible=flexible, tokens=sum(len(r["token_ids"]) for r in rows),
+            finish_length=sum(r["finish_reason"] == "length" for r in rows), seconds=round(secs, 2),
+            temperature=sp.temperature, max_tokens=a.quality_max_tokens, rows=rows)
+        print("QUALITY", name, f"strict {strict}/{qn} flexible {flexible}/{qn}", f"{secs:.1f}s",
+              "tokens", result["quality"][name]["tokens"], flush=True)
         save()
 
 if "switch" in phases:

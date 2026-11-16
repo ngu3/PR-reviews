@@ -56,18 +56,21 @@ w1 = (torch.randn(E, K, 2 * I, generator=gen) * 0.02).to(torch.bfloat16).to(dev)
 w2 = (torch.randn(E, I, K, generator=gen) * 0.02).to(torch.bfloat16).to(dev)
 
 # Prebuild both stock and count-filter kernels outside tracing, as process_weights_after_loading does.
-fm.prebuild_fused_moe_kernel(
-    topk=TOPK, activation="silu", use_ep=False, skip_padded_tokens=False, padding_rows=None
-)
-fm.prebuild_fused_moe_kernel(
-    topk=TOPK, activation="silu", use_ep=False, skip_padded_tokens=True, padding_rows="count"
-)
+# The row-count mode was the string padding_rows="count" before the PaddedRowFilter enum; accept either API.
+try:
+    from vllm_torchtpu.layers.core.fused_moe_gmm import PaddedRowFilter as _PRF
+    _STOCK_KW, _COUNT_KW, _API = {}, {"padded_row_filter": _PRF.ROW_COUNT}, "enum"
+except ImportError:
+    _STOCK_KW, _COUNT_KW, _API = {"padding_rows": None}, {"padding_rows": "count"}, "string"
+print("ROW_FILTER_API", _API, flush=True)
+fm.prebuild_fused_moe_kernel(topk=TOPK, activation="silu", use_ep=False, skip_padded_tokens=False, **_STOCK_KW)
+fm.prebuild_fused_moe_kernel(topk=TOPK, activation="silu", use_ep=False, skip_padded_tokens=True, **_COUNT_KW)
 
 
 def _moe_stock(x, weights, ids):
     return fm.fused_moe_gmm(
         x, w1, w2, None, None, None, None, weights, ids, None, TOPK, "silu",
-        skip_padded_tokens=False, padding_rows=None,
+        skip_padded_tokens=False, **_STOCK_KW,
     )
 
 
@@ -83,7 +86,7 @@ def _moe_gcount(x, weights, ids):
     assert row_info is not None, f"{_TRACK_KW}=True must allocate the valid-row count"
     return fm.fused_moe_gmm(
         x, w1, w2, None, None, None, None, weights, ids, None, TOPK, "silu",
-        skip_padded_tokens=True, padding_rows="count", row_info=row_info,
+        skip_padded_tokens=True, row_info=row_info, **_COUNT_KW,
     )
 
 
@@ -190,6 +193,7 @@ summary = dict(
     cases=len(results),
     failed=[r for r in results if not r["pass"]],
     interface="count",
+    row_filter_api=_API,
     config=dict(
         E=E, I=I, K=K, topk=TOPK, buckets=a.buckets, seeds=a.seeds,
         vllm_torchtpu=fm.__file__,
