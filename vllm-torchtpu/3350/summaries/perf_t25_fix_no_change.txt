@@ -19,10 +19,11 @@ $ python3 tools/same_host_compare.py results/t25 --ref up2k9574_on --arms up3k95
 ### verdict (pre-registered rule)
 host-23 (s2 order): n=1 +0.42% (noise 0.19) -> outside; n=16 +0.06% (0.16), n=64 -0.06% (0.11), n=256 +0.01% (0.10) -> within
 host-22 (s1 order): n=1 +1.15% (noise 1.40), n=16 +0.15% (0.20), n=256 +0.03% (0.10) -> within; n=64 +0.11% (0.10) -> outside
-=> The rule is not met: 2 of the 8 (host, n) points are outside noise (n=1 on host-23; n=64 on host-22, by 0.006 percentage
-   points). n=16 and n=256 are within noise on both hosts.
+=> The pre-registered threshold is not met: 2 of the 8 (host, n) points are outside noise (n=1 on host-23; n=64 on
+   host-22, by 0.006 percentage points). n=16 and n=256 are within noise on both hosts.
    The HLO comparison (t25 h1, summaries/hlo_t25_fix_vs_prev_head.txt) shows the decode programs of every bucket are
-   identical in the two trees, so the two outside points are differences between sessions of the same programs.
+   identical in the two trees, so the review fixes do not change the device computation. That the two outside points
+   are session-to-session variation is a hypothesis; these runs do not prove it.
 
 ### profile session (p1): head vs parent, both at 9,573 blocks, one session each, 3 pairs per point
 $ python3 tools/same_host_compare.py results/t25/p1-profile-steady --ref upbasek9573_off --arms up3k9573_on --points 1,15,16,64,255,256
