@@ -1,6 +1,6 @@
 # vllm-torchtpu #3350: evidence for BF16 MoE padded-token skipping
 
-[Upstream pull request](https://github.com/vllm-project/vllm-torchtpu/pull/3350) · head `056cee01c` (commits `08a78448e`, `fe5cbee79`, `056cee01c`) on main `6cc233d90`.
+[Upstream pull request](https://github.com/vllm-project/vllm-torchtpu/pull/3350) · head `9d9fcb849` (commits `08a78448e`, `fe5cbee79`, `056cee01c`, `9d9fcb849`) on main `6cc233d90`. `9d9fcb849` adds tests only, so `src/` is the same as `056cee01c`.
 
 Raw results (gzip JSON written by [`tools/mskip_engine.py`](tools/mskip_engine.py) and the direct check), the analysis scripts, and their outputs. Host names are pseudonymized (`host-NN`, stable across experiments); nothing else in the result files was changed.
 
@@ -9,7 +9,8 @@ Raw results (gzip JSON written by [`tools/mskip_engine.py`](tools/mskip_engine.p
 | Tree (label prefix) | Source | Used for |
 |---|---|---|
 | `upbase` | vllm-torchtpu `6cc233d90` (main, the PR's parent) | baseline in every comparison |
-| `up3` | `056cee01c` (the PR head: `fe5cbee79` + the review fixes) | t25: unit tests, direct MoE check, flag-on and flag-off numerics, GSM8K quality, EP fallback, MTP drafter, decode time |
+| `up4` | `9d9fcb849` (the PR head: `056cee01c` + TPU tests of the row-count kernel and custom op; same `src/`) | t26: unit tests and type check |
+| `up3` | `056cee01c` (`fe5cbee79` + the first review's fixes) | t25: unit tests, direct MoE check, flag-on and flag-off numerics, GSM8K quality, EP fallback, MTP drafter, decode time |
 | `up2` | `fe5cbee79` (the head before the review fixes) | t22b / t22c numerics, t23 / t24 performance, t25 MTP failure reproduction and before/after decode time |
 | `up` | `ce4a30948`: the PR before the count was renamed to `local_valid_tokens`; the only difference from `fe5cbee79` is that rename ([diff](patches/ce4a30948-to-fe5cbee-rename.diff)) | t22 performance, served path, first numerics |
 | `upbar` | `fe5cbee79` + [per-layer mask variant](patches/0001-Compute-the-valid-row-mask-per-MoE-layer-optimizatio.patch) (not in the PR) | t23 variant |
@@ -20,8 +21,8 @@ Arms are labelled `<tree>_<on|off>_<rep>`; `on` means `TPU_MOE_SKIP_PADDED_TOKEN
 | Arm | Source | Flag | Where |
 |---|---|---|---|
 | Baseline | `6cc233d90` | off | every group |
-| Candidate off | `056cee01c` | off | `results/t25/q1-correctness-quality` (`up3_off_f1`) |
-| Candidate on | `056cee01c` | on | `results/t25/*` (`up3_on_*`, `up3k*`) |
+| Candidate off | `056cee01c` (same `src/` as the head) | off | `results/t25/q1-correctness-quality` (`up3_off_f1`) |
+| Candidate on | `056cee01c` (same `src/` as the head) | on | `results/t25/*` (`up3_on_*`, `up3k*`) |
 
 ## Environment
 
@@ -34,7 +35,8 @@ Arms are labelled `<tree>_<on|off>_<rep>`; `on` means `TPU_MOE_SKIP_PADDED_TOKEN
 
 | Claim | Results | Output |
 |---|---|---|
-| Head: unit tests 1,165 (head) / 1,094 (parent), Pyrefly baseline, direct MoE check 45/45 | `t25/q0-unit-n2` | [t25 validation](summaries/t25_validation.txt) |
+| Head `9d9fcb849`: unit tests 1,174 passed (incl. the 9 added TPU cases), Pyrefly baseline | `t26/u0-unit-head` (status, pytest and Pyrefly logs) | [t26](summaries/t26_unit_tests_head.txt) |
+| `056cee01c`: unit tests 1,165 / parent 1,094, Pyrefly baseline, direct MoE check 45/45 | `t25/q0-unit-n2` | [t25 validation](summaries/t25_validation.txt) |
 | Head: numerics + switching sequence vs parent, flag on and off; GSM8K quality (1,319 prompts, greedy and sampled) | `t25/q1-correctness-quality` | [t25 validation](summaries/t25_validation.txt) |
 | Head: EP fallback; MTP drafter with the flag (and the failure of `fe5cbee79`) | `t25/e1-ep-fallback`, `t25/m1-mtp-drafter` | [t25 validation](summaries/t25_validation.txt) |
 | Review fixes: same decode programs (XLA dumps, `up3` vs `up2`); steady timing, KV pinned, ABBA, two hosts | (dumps not included), `t25/s1-fix-perf`, `t25/s2-fix-perf` | [HLO](summaries/hlo_t25_fix_vs_prev_head.txt), [fix perf](summaries/perf_t25_fix_no_change.txt) |

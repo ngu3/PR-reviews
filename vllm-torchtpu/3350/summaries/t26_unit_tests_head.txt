@@ -1,0 +1,26 @@
+t26: unit tests and full type check of the PR head 9d9fcb849 (tree up4).
+9d9fcb849 = 056cee01c + tests only; src/ is identical to 056cee01c, the tree of every t25 engine run:
+
+$ git diff --stat 056cee01c 9d9fcb849
+ tests/layers/core/test_fused_moe_gmm.py    | 137 +++++++++++++++++++++++++++++
+ tests/layers/core/test_moe_padding_rows.py |  82 +++++++++++++++++
+ 2 files changed, 219 insertions(+)
+
+### results/t26/u0-unit-head/unittest_status.txt
+pytest up4 rc=0 1174 passed, 35 warnings in 390.98s (0:06:30)
+typecheck up4 rc=0 pyrefly: 305 errors, each matched by one entry in .pyrefly-baseline-full.json.
+
+Same test list and image as t25 q0 (parent 6cc233d90: 1,094 passed; 056cee01c: 1,165 passed). The 9 added test cases are
+the difference 1,174 - 1,165; pytest ran with -q, so the log has no per-test names. The sha256 prefixes recorded by
+the run match the files at 9d9fcb849:
+new-test up4 sha256=2ad265b11e0979f7
+dual-test up4 tests/layers/core/test_moe_padding_rows.py sha256=63bffd02b9edb9bd
+dual-test up4 tests/layers/core/test_fused_moe_gmm.py sha256=b76495599ceb9c6c
+  git show 9d9fcb849:tests/layers/core/test_moe_padding_rows.py | sha256sum -> 63bffd02b9edb9bd
+  git show 9d9fcb849:tests/layers/core/test_fused_moe_gmm.py | sha256sum -> b76495599ceb9c6c
+  git show 9d9fcb849:tests/layers/adapter/quantization/test_unquantized_moe_skip.py | sha256sum -> 2ad265b11e0979f7
+
+Added TPU test cases (9):
+  tests/layers/core/test_fused_moe_gmm.py::test_fused_moe_row_count_matches_stock_on_real_rows[(T, n) = (16, 0), (16, 1), (16, 9), (16, 16), (32, 17)]
+  tests/layers/core/test_fused_moe_gmm.py::test_fused_moe_row_count_skips_dense_expert_path
+  tests/layers/core/test_moe_padding_rows.py::test_adapter_row_count_through_custom_op_matches_stock[(T, n) = (16, 0), (16, 9), (16, 16)]

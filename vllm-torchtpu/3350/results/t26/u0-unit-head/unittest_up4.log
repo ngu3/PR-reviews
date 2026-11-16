@@ -1,0 +1,113 @@
+........................................................................ [  6%]
+........................................................................ [ 12%]
+........................................................................ [ 18%]
+........................................................................ [ 24%]
+........................................................................ [ 30%]
+........................................................................ [ 36%]
+........................................................................ [ 42%]
+........................................................................ [ 49%]
+........................................................................ [ 55%]
+........................................................................ [ 61%]
+........................................................................ [ 67%]
+........................................................................ [ 73%]
+........................................................................ [ 79%]
+........................................................................ [ 85%]
+........................................................................ [ 91%]
+........................................................................ [ 98%]
+......................                                                   [100%]
+=============================== warnings summary ===============================
+../../usr/local/lib/python3.12/site-packages/torch/jit/_script.py:365: 14 warnings
+  /usr/local/lib/python3.12/site-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.
+    warnings.warn(
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+src/vllm_torchtpu/layers/adapter/linear_common.py:20
+  /opt/arm-up4/src/vllm_torchtpu/layers/adapter/linear_common.py:20: DeprecationWarning: jax.experimental.shard_map is deprecated in v0.8.0. Used jax.shard_map instead.
+    from jax.experimental.shard_map import shard_map
+
+src/vllm_torchtpu/layers/adapter/router_topk.py:38
+  /opt/arm-up4/src/vllm_torchtpu/layers/adapter/router_topk.py:38: UserWarning: <TorchTpu/ApiStage/ExperimentalApi/> jax_op is experimental and subject to change: torch.tpu.pallas.jax_op is experimental and subject to change.
+    _op = pallas.jax_op("pallas::moe_router_topk", router_topk)
+
+tests/layers/adapter/quantization/test_fp8.py:110
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8.py:110: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8.py:274
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8.py:274: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8.py:424
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8.py:424: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8.py:512
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8.py:512: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8.py:583
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8.py:583: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8.py:629
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8.py:629: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8.py:695
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8.py:695: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8.py:703
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8.py:703: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8_w8a16.py:42
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8_w8a16.py:42: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8_w8a16.py:73
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8_w8a16.py:73: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8_w8a16.py:89
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8_w8a16.py:89: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8_w8a16.py:105
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8_w8a16.py:105: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8_w8a16.py:120
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8_w8a16.py:120: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8_w8a16.py:149
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8_w8a16.py:149: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8_w8a16.py:183
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8_w8a16.py:183: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/layers/adapter/quantization/test_fp8_w8a16.py:195
+  /opt/arm-up4/tests/layers/adapter/quantization/test_fp8_w8a16.py:195: PytestUnknownMarkWarning: Unknown pytest.mark.cpu_test - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cpu_test
+
+tests/kernels/test_router_topk.py::test_kernel_matches_torch_topk_on_real_routing_distribution
+  /opt/arm-up4/tests/kernels/test_router_topk.py:73: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+    gathered = torch.gather(scores, 1, torch.from_numpy(np.asarray(ki)).long())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1174 passed, 35 warnings in 390.98s (0:06:30)
+I0000 00:00:1794854433.511267      89 compilation_cache.cc:356] Compilation cache evicted.
+I0000 00:00:1794854433.511307      89 compilation_cache.cc:203] CompilationCache final stats: num_cache_reqs=1975
+num_cache_hits=1300 {65.8%}
+num_compilations=675
+peak_compilation_memory_bytes=unknown
+
+sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
