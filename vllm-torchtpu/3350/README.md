@@ -1,6 +1,6 @@
 # vllm-torchtpu #3350: evidence for BF16 MoE padded-token skipping
 
-[Upstream pull request](https://github.com/vllm-project/vllm-torchtpu/pull/3350) · head `9d9fcb849` (commits `08a78448e`, `fe5cbee79`, `056cee01c`, `9d9fcb849`) on main `6cc233d90`. `9d9fcb849` adds tests only, so `src/` is the same as `056cee01c`.
+[Upstream pull request](https://github.com/vllm-project/vllm-torchtpu/pull/3350) · head `16ed9b0a7` (commits `08a78448e`, `fe5cbee79`, `056cee01c`, `9d9fcb849`, `16ed9b0a7`) on main `6cc233d90`. `9d9fcb849` adds tests only; `16ed9b0a7` addresses the second review's nits (logging, docstrings, an explicit default argument, tests) and was rechecked in t27.
 
 Raw results (gzip JSON written by [`tools/mskip_engine.py`](tools/mskip_engine.py) and the direct check), the analysis scripts, and their outputs. Host names are pseudonymized (`host-NN`, stable across experiments); nothing else in the result files was changed.
 
@@ -9,20 +9,22 @@ Raw results (gzip JSON written by [`tools/mskip_engine.py`](tools/mskip_engine.p
 | Tree (label prefix) | Source | Used for |
 |---|---|---|
 | `upbase` | vllm-torchtpu `6cc233d90` (main, the PR's parent) | baseline in every comparison |
-| `up4` | `9d9fcb849` (the PR head: `056cee01c` + TPU tests of the row-count kernel and custom op; same `src/`) | t26: unit tests and type check |
+| `up5` | `16ed9b0a7` (the PR head: `9d9fcb849` + the second review's nits) | t27: unit tests and type check, flag-on and flag-off numerics, EP fallback, MTP drafter, XLA dumps vs `up3` |
+| `up4` | `9d9fcb849` (`056cee01c` + TPU tests of the row-count kernel and custom op; same `src/`) | t26: unit tests and type check |
 | `up3` | `056cee01c` (`fe5cbee79` + the first review's fixes) | t25: unit tests, direct MoE check, flag-on and flag-off numerics, GSM8K quality, EP fallback, MTP drafter, decode time |
 | `up2` | `fe5cbee79` (the head before the review fixes) | t22b / t22c numerics, t23 / t24 performance, t25 MTP failure reproduction and before/after decode time |
 | `up` | `ce4a30948`: the PR before the count was renamed to `local_valid_tokens`; the only difference from `fe5cbee79` is that rename ([diff](patches/ce4a30948-to-fe5cbee-rename.diff)) | t22 performance, served path, first numerics |
 | `upbar` | `fe5cbee79` + [per-layer mask variant](patches/0001-Compute-the-valid-row-mask-per-MoE-layer-optimizatio.patch) (not in the PR) | t23 variant |
 | `base`, `gz` | `15be35dad`, and `15be35dad` + [zero-weight approach](patches/gate-zero-on-15be35d/) | gate-zero comparison quoted in the PR |
 
-Arms are labelled `<tree>_<on|off>_<rep>`; `on` means `TPU_MOE_SKIP_PADDED_TOKENS=1`. A tree name ending in `k<blocks>` (t24, t25) pins the KV cache to that many blocks (`num_gpu_blocks_override`). The three arms of the head:
+Arms are labelled `<tree>_<on|off>_<rep>`; `on` means `TPU_MOE_SKIP_PADDED_TOKENS=1`. A tree name ending in `k<blocks>` (t24, t25, t27) pins the KV cache to that many blocks (`num_gpu_blocks_override`). The arms quoted in the PR:
 
 | Arm | Source | Flag | Where |
 |---|---|---|---|
 | Baseline | `6cc233d90` | off | every group |
-| Candidate off | `056cee01c` (same `src/` as the head) | off | `results/t25/q1-correctness-quality` (`up3_off_f1`) |
-| Candidate on | `056cee01c` (same `src/` as the head) | on | `results/t25/*` (`up3_on_*`, `up3k*`) |
+| Candidate off | `056cee01c` | off | `results/t25/q1-correctness-quality` (`up3_off_f1`) |
+| Candidate on | `056cee01c` | on | `results/t25/*` (`up3_on_*`, `up3k*`) |
+| Head | `16ed9b0a7` | on and off | `results/t27/*` (`up5_*`, `up5k*`) |
 
 ## Environment
 
@@ -35,10 +37,11 @@ Arms are labelled `<tree>_<on|off>_<rep>`; `on` means `TPU_MOE_SKIP_PADDED_TOKEN
 
 | Claim | Results | Output |
 |---|---|---|
-| Head `9d9fcb849`: unit tests 1,174 passed (incl. the 9 added TPU cases), Pyrefly baseline | `t26/u0-unit-head` (status, pytest and Pyrefly logs) | [t26](summaries/t26_unit_tests_head.txt) |
+| Head `16ed9b0a7`: unit tests 1,174 passed, Pyrefly baseline; numerics + switching sequence (flag on and off), EP fallback and MTP drafter bit-identical to the parent; the fallback warning only in the EP and MTP runs; decode programs identical to `056cee01c`'s (XLA dumps, flag on and off) | `t27/*` (dumps not included) | [t27](summaries/t27_nits_head.txt), [HLO](summaries/hlo_t27_nits.txt) |
+| `9d9fcb849`: unit tests 1,174 passed (incl. the 9 added TPU cases), Pyrefly baseline | `t26/u0-unit-head` (status, pytest and Pyrefly logs) | [t26](summaries/t26_unit_tests_head.txt) |
 | `056cee01c`: unit tests 1,165 / parent 1,094, Pyrefly baseline, direct MoE check 45/45 | `t25/q0-unit-n2` | [t25 validation](summaries/t25_validation.txt) |
-| Head: numerics + switching sequence vs parent, flag on and off; GSM8K quality (1,319 prompts, greedy and sampled) | `t25/q1-correctness-quality` | [t25 validation](summaries/t25_validation.txt) |
-| Head: EP fallback; MTP drafter with the flag (and the failure of `fe5cbee79`) | `t25/e1-ep-fallback`, `t25/m1-mtp-drafter` | [t25 validation](summaries/t25_validation.txt) |
+| `056cee01c`: numerics + switching sequence vs parent, flag on and off; GSM8K quality (1,319 prompts, greedy and sampled) | `t25/q1-correctness-quality` | [t25 validation](summaries/t25_validation.txt) |
+| `056cee01c`: EP fallback; MTP drafter with the flag (and the failure of `fe5cbee79`) | `t25/e1-ep-fallback`, `t25/m1-mtp-drafter` | [t25 validation](summaries/t25_validation.txt) |
 | Review fixes: same decode programs (XLA dumps, `up3` vs `up2`); steady timing, KV pinned, ABBA, two hosts | (dumps not included), `t25/s1-fix-perf`, `t25/s2-fix-perf` | [HLO](summaries/hlo_t25_fix_vs_prev_head.txt), [fix perf](summaries/perf_t25_fix_no_change.txt) |
 | KV cache size pinned for both arms (9,573 / 9,574 blocks) | `t24/k1-kv-pinned`, `t24/k2-kv-pinned` | [t24](summaries/perf_t24_kv_pinned.txt) |
 | Earlier trees: unit tests 836 / 772, direct MoE check, numerics, EP fallback, served path | `t22/a0`, `t22/a4`, `t22/a5`, `t22b`, `t22c` | [correctness](summaries/correctness.txt) |
@@ -54,6 +57,10 @@ Arms are labelled `<tree>_<on|off>_<rep>`; `on` means `TPU_MOE_SKIP_PADDED_TOKEN
 From this folder (Python 3, standard library):
 
 ```bash
+python3 tools/analyze_mskip.py results/t27/n1-head-on --check --ref upbase_off_f1
+python3 tools/analyze_mskip.py results/t27/n2-head-off --check --ref upbase_off_f1
+python3 tools/analyze_mskip.py results/t27/e1-ep-fallback --check --ref upbase_off_e1
+python3 tools/analyze_mskip.py results/t27/m1-mtp-drafter --check --ref upbase_off_m1
 python3 tools/analyze_mskip.py results/t25/q1-correctness-quality --check --ref upbase_off_f1
 python3 tools/n1_compare.py results/t25/q1-correctness-quality --ref upbase_off_f1 --arms up3_on_f1,up3_off_f1
 python3 tools/quality_compare.py results/t25/q1-correctness-quality --ref upbase_off --arms up3_on,up3_off
@@ -66,6 +73,13 @@ python3 tools/served_compare.py results/t22/a5-served --ref upbase_off_d1 --arms
 python3 tools/t22_compare.py results/t22                  # every t22 host: steady, prefill/mixed, rollout
 python3 tools/same_host_compare.py results/t23/d1-perf --ref upbase_off --arms up2_on,upbar_on
 python3 tools/t21_compare.py results/t21-gatezero --experiment gatezero
+```
+
+XLA dumps (`MSKIP_XLA_DUMP=1`; the dumps are not included):
+
+```bash
+python3 tools/hlo_dump_compare.py A_DUMP_DIR B_DUMP_DIR          # every compiled module, as a multiset
+python3 tools/hlo_backbone_check.py up3=A_DUMP_DIR up5=B_DUMP_DIR  # the decode backbone programs (fused_add_rms_norm)
 ```
 
 Engine runs (TPU, per arm):

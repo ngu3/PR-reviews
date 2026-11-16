@@ -1,0 +1,82 @@
+t27: the head 16ed9b0a7 (tree up5 = 9d9fcb849 + the second review's nits) against the parent 6cc233d90 (upbase).
+Same image as the other runs plus the up5 tree; each group ran its arms one after another on one TPU v7x 2x2x1
+host, TP=4.
+
+### Unit tests and full type check (u0)
+pytest up5 rc=0 1174 passed, 35 warnings in 388.73s (0:06:28)
+typecheck up5 rc=0 pyrefly: 305 errors, each matched by one entry in .pyrefly-baseline-full.json.
+Same test list and image as t26 (9d9fcb849: 1,174 passed). The head drops one test
+(test_update_writes_mask_every_call_without_caching) and adds one
+(test_fallback_warning_only_for_models_with_bf16_moe_layers). pytest ran with -q, so the log has no per-test
+names; the sha256 prefixes recorded by the run match the changed test files at 16ed9b0a7:
+new-test up5 sha256=aee8d7b52b84c178
+dual-test up5 tests/layers/adapter/test_moe_skip_policy.py sha256=4070a45813cf0a75
+dual-test up5 tests/runner/test_bf16_moe_skip_runner.py sha256=45b25b3a5cb70b9f
+  git show 16ed9b0a7:tests/layers/adapter/quantization/test_unquantized_moe_skip.py | sha256sum -> aee8d7b52b84c178
+  git show 16ed9b0a7:tests/layers/adapter/test_moe_skip_policy.py | sha256sum -> 4070a45813cf0a75
+  git show 16ed9b0a7:tests/runner/test_bf16_moe_skip_runner.py | sha256sum -> 45b25b3a5cb70b9f
+
+$ git diff --stat 9d9fcb849 16ed9b0a7
+ docs/reference/env_vars.md                         |  2 +-
+ .../layers/adapter/moe_skip_policy.py              |  2 +-
+ .../layers/adapter/pipelined_fused_moe.py          |  3 +-
+ .../layers/adapter/quantization/unquantized.py     | 18 +++--
+ src/vllm_torchtpu/layers/core/fused_moe_gmm.py     | 15 +++--
+ src/vllm_torchtpu/runner/tpu_runner.py             | 76 ++++++++++------------
+ .../quantization/test_unquantized_moe_skip.py      | 13 ++--
+ tests/layers/adapter/test_moe_skip_policy.py       |  2 +-
+ tests/runner/test_bf16_moe_skip_runner.py          | 62 +++++++++++++-----
+ tests/test_token_padding.py                        | 17 -----
+ 10 files changed, 116 insertions(+), 94 deletions(-)
+
+### TP=4 numerics + switching sequence, head flag on vs the parent on the same host (n1-head-on)
+$ python3 tools/analyze_mskip.py results/t27/n1-head-on --check --ref upbase_off_f1
+bit-identical groups: [['up5_on_f1', 'upbase_off_f1']]
+CHECK PASS (1 runs against upbase_off_f1; differ: none)
+$ python3 tools/n1_compare.py results/t27/n1-head-on --ref upbase_off_f1 --arms up5_on_f1
+N1 PASS: 1 arms vs upbase_off_f1; sequence [16, 10, 16, 1, 16, 15, 12, 16, 3, 17, 32, 16, 256, 250, 255, 256]; 51382 reference tokens
+
+### TP=4 numerics + switching sequence, head flag off vs the parent on the same host (n2-head-off)
+$ python3 tools/analyze_mskip.py results/t27/n2-head-off --check --ref upbase_off_f1
+bit-identical groups: [['up5_off_f1', 'upbase_off_f1']]
+CHECK PASS (1 runs against upbase_off_f1; differ: none)
+$ python3 tools/n1_compare.py results/t27/n2-head-off --ref upbase_off_f1 --arms up5_off_f1
+N1 PASS: 1 arms vs upbase_off_f1; sequence [16, 10, 16, 1, 16, 15, 12, 16, 3, 17, 32, 16, 256, 250, 255, 256]; 51382 reference tokens
+
+### TP=4 + EP fallback, flag on (e1)
+$ python3 tools/analyze_mskip.py results/t27/e1-ep-fallback --check --ref upbase_off_e1
+bit-identical groups: [['up5_on_e1', 'upbase_off_e1']]
+CHECK PASS (1 runs against upbase_off_e1; differ: none)
+N1 PASS: 1 arms vs upbase_off_e1; sequence [16, 10, 16, 1, 16, 15, 12, 16, 3, 17, 32, 16]; 25762 reference tokens
+
+### MTP drafter (method mtp, 1 speculative token, dummy weights), flag on (m1)
+$ python3 tools/analyze_mskip.py results/t27/m1-mtp-drafter --check --ref upbase_off_m1
+bit-identical groups: [['up5_on_m1', 'upbase_off_m1']]
+CHECK PASS (1 runs against upbase_off_m1; differ: none)
+
+### Policy, valid-token count, KV blocks and compiled programs reported by the workers (rank 0)
+up5_on_e1        flag=True  policy={'enabled': False, 'fallback_reason': 'expert parallelism', 'padding_mode': 'stock'} track_valid_tokens=False kv_blocks=9570 programs 190 -> 251
+upbase_off_e1    flag=False policy=None track_valid_tokens=False kv_blocks=9570 programs 190 -> 251
+up5_on_m1        flag=True  policy={'enabled': False, 'fallback_reason': 'speculative decoding', 'padding_mode': 'stock'} track_valid_tokens=False kv_blocks=8631 programs 4103 -> 4121
+upbase_off_m1    flag=False policy=None track_valid_tokens=False kv_blocks=8631 programs 4103 -> 4121
+up5_on_f1        flag=True  policy={'enabled': True, 'fallback_reason': None, 'padding_mode': 'row_count'} track_valid_tokens=True kv_blocks=9573 programs 190 -> 316
+upbase_off_f1    flag=False policy=None track_valid_tokens=False kv_blocks=9574 programs 190 -> 316
+up5_off_f1       flag=False policy={'enabled': False, 'fallback_reason': None, 'padding_mode': 'stock'} track_valid_tokens=False kv_blocks=9573 programs 190 -> 316
+upbase_off_f1    flag=False policy=None track_valid_tokens=False kv_blocks=9573 programs 191 -> 317
+
+### BF16 fallback warning in the engine logs: lines with "is not applied to the bf16 MoE" per run
+### (the logs themselves are not included)
+n1 up5_on_f1: 0
+n1 upbase_off_f1: 0
+n2 up5_off_f1: 0
+n2 upbase_off_f1: 0
+e1 up5_on_e1: 1
+    (Worker_TP0_EP0 pid=11213) WARNING 11-16 20:02:56 [tpu_runner.py:7868] TPU_MOE_SKIP_PADDED_TOKENS is not applied to the bf16 MoE (expert parallelism); falling back to the stock path.
+e1 upbase_off_e1: 0
+m1 up5_on_m1: 1
+    (Worker_TP0 pid=30071) WARNING 11-16 20:09:40 [tpu_runner.py:7868] TPU_MOE_SKIP_PADDED_TOKENS is not applied to the bf16 MoE (speculative decoding); falling back to the stock path.
+m1 upbase_off_m1: 0
+h1 up3k9574_on_h1: 0
+h1 up5k9574_on_h1: 0
+h2 up3k9574_off_h2: 0
+h2 up5k9574_off_h2: 0

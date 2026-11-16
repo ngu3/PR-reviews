@@ -1,0 +1,72 @@
+t27 h1 / h2: do the second review's nits change any compiled program? XLA dumps (MSKIP_XLA_DUMP=1) of 056cee01c (up3)
+and the head 16ed9b0a7 (up5), KV pinned to 9,574 blocks, flag on (h1) and off (h2); each pair ran on one host, each arm
+a fresh engine running the numerics phase. The dumps (~400 MB each) are not included; the comparison tool is
+tools/hlo_dump_compare.py.
+
+## h1, flag on
+$ python3 tools/hlo_dump_compare.py <up3k9574_on_h1 dump> <up5k9574_on_h1 dump>
+A up3k9574_on_h1: 197 after_optimizations files, 197 distinct normalized programs
+B up5k9574_on_h1: 203 after_optimizations files, 203 distinct normalized programs
+common (multiset): 196; only in A: 1; only in B: 7
+  only in A: 11784a3f59c7e0b2 x1 5340 chars  e.g. module_0254.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in B: 6d6ee309a25859c3 x1 28350 chars  e.g. module_0416.tt_jit_tpu_runner_L446C0__substitute_placeholder_token_scatter.cl_994787025.after_optimizations.txt
+  only in B: 55552eeac324e814 x1 12135 chars  e.g. module_0470.tt_jit_tpu_runner_L446C0__substitute_placeholder_token_scatter.cl_994787025.after_optimizations.txt
+  only in B: 52b678ddbfb4dd48 x1 9425 chars  e.g. module_0163.tt_jit_tpu_runner_L446C0__substitute_placeholder_token_scatter.cl_994787025.after_optimizations.txt
+  only in B: cfc9d4ed3e5f5ff2 x1 9018 chars  e.g. module_0369.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in B: e6729a99531a9d1b x1 5349 chars  e.g. module_0380.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in B: 1efd2304edf3d122 x1 5349 chars  e.g. module_0388.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in B: cfafb190e0c2dc4f x1 5341 chars  e.g. module_1299.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+rc=1
+
+## h2, flag off
+$ python3 tools/hlo_dump_compare.py <up3k9574_off_h2 dump> <up5k9574_off_h2 dump>
+A up3k9574_off_h2: 202 after_optimizations files, 202 distinct normalized programs
+B up5k9574_off_h2: 200 after_optimizations files, 200 distinct normalized programs
+common (multiset): 199; only in A: 3; only in B: 1
+  only in A: 5fabd9085a56b7f1 x1 5341 chars  e.g. module_0329.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in A: 55af91e91de1c3ca x1 5340 chars  e.g. module_0700.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in A: 00a94c9ec112db8d x1 4905 chars  e.g. module_0708.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in B: 405b7f479e9a03cf x1 9425 chars  e.g. module_0247.tt_jit_tpu_runner_L446C0__substitute_placeholder_token_scatter.cl_994787025.after_optimizations.txt
+rc=1
+
+## Decode backbone programs (modules *fused_add_rms_norm*, one per token bucket) and a same-tree control
+The t25 dump is up3k9574_on_h1 from t25 h1 (056cee01c again, another session on another host).
+$ python3 tools/hlo_backbone_check.py t27-up3-on=<dump> t27-up5-on=<dump> t25-up3-on=<dump> t27-up3-off=<dump> t27-up5-off=<dump>
+t27-up3-on: 197 modules, 9 backbone (fused_add_rms_norm)
+t27-up5-on: 203 modules, 9 backbone (fused_add_rms_norm)
+t25-up3-on: 203 modules, 9 backbone (fused_add_rms_norm)
+t27-up3-off: 202 modules, 9 backbone (fused_add_rms_norm)
+t27-up5-off: 200 modules, 9 backbone (fused_add_rms_norm)
+t27-up3-on vs t27-up5-on: backbone identical=True; modules common=196, only A=1, only B=7
+t27-up3-on vs t25-up3-on: backbone identical=True; modules common=196, only A=1, only B=7
+t27-up3-on vs t27-up3-off: backbone identical=False; modules common=185, only A=12, only B=17
+t27-up3-on vs t27-up5-off: backbone identical=False; modules common=183, only A=14, only B=17
+t27-up5-on vs t25-up3-on: backbone identical=True; modules common=202, only A=1, only B=1
+t27-up5-on vs t27-up3-off: backbone identical=False; modules common=191, only A=12, only B=11
+t27-up5-on vs t27-up5-off: backbone identical=False; modules common=189, only A=14, only B=11
+t25-up3-on vs t27-up3-off: backbone identical=False; modules common=191, only A=12, only B=11
+t25-up3-on vs t27-up5-off: backbone identical=False; modules common=189, only A=14, only B=11
+t27-up3-off vs t27-up5-off: backbone identical=True; modules common=199, only A=3, only B=1
+
+## Same-tree control: 056cee01c in t25 h1 vs 056cee01c in t27 h1 (flag on)
+$ python3 tools/hlo_dump_compare.py <t25 up3k9574_on_h1 dump> <t27 up3k9574_on_h1 dump>
+A up3k9574_on_h1: 203 after_optimizations files, 203 distinct normalized programs
+B up3k9574_on_h1: 197 after_optimizations files, 197 distinct normalized programs
+common (multiset): 196; only in A: 7; only in B: 1
+  only in A: 6d6ee309a25859c3 x1 28350 chars  e.g. module_0096.tt_jit_tpu_runner_L446C0__substitute_placeholder_token_scatter.cl_994787025.after_optimizations.txt
+  only in A: 55552eeac324e814 x1 12135 chars  e.g. module_0403.tt_jit_tpu_runner_L446C0__substitute_placeholder_token_scatter.cl_994787025.after_optimizations.txt
+  only in A: 52b678ddbfb4dd48 x1 9425 chars  e.g. module_0143.tt_jit_tpu_runner_L446C0__substitute_placeholder_token_scatter.cl_994787025.after_optimizations.txt
+  only in A: cfc9d4ed3e5f5ff2 x1 9018 chars  e.g. module_0349.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in A: 1efd2304edf3d122 x1 5349 chars  e.g. module_0179.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in A: e6729a99531a9d1b x1 5349 chars  e.g. module_0360.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in A: cfafb190e0c2dc4f x1 5341 chars  e.g. module_0187.tt_jit_export_L589C0_fx_to_mlir_traverse_and_compile_compile_mlir_as_strided.cl_994787025.after_optimizations.txt
+  only in B: bf745e66452ffe47 x1 14086 chars  e.g. module_0045.tt_jit_pallas_L1350C0___call___call_custom_kernel_custom_kernel.cl_994787025.after_optimizations.txt
+
+Reading:
+- With the flag on and with it off, the 9 decode backbone programs of the head are identical to 056cee01c's after
+  masking debug info. With the flag on they differ from the flag-off programs, as expected (row-count filter).
+- The unmatched modules are small helpers compiled on first use (as_strided exports, the placeholder-token
+  scatter, one KV-pool block-copy kernel). The same code in two sessions (056cee01c in t25 and in t27, flag on)
+  differs by 7 / 1 such modules, and the 7 helpers that t27's up3 session did not compile are the same 7 hashes
+  that h1 lists as only in up5. Which helpers a session compiles varies between sessions; the nits do not touch
+  these paths.

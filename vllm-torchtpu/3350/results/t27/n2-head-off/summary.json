@@ -1,0 +1,93 @@
+{
+ "numerics": {
+  "identical_groups": [
+   [
+    "up5_off_f1",
+    "upbase_off_f1"
+   ]
+  ],
+  "vs_upbase_off_f1": {
+   "up5_off_f1": {
+    "n1": {
+     "equal_logprob_share": 1.0,
+     "identical_prompts": 1,
+     "max": 0.0,
+     "nonzero_median": 0.0,
+     "nonzero_p99": 0.0,
+     "prompts": 1,
+     "tokens_before_divergence": 512
+    },
+    "n10": {
+     "equal_logprob_share": 1.0,
+     "identical_prompts": 10,
+     "max": 0.0,
+     "nonzero_median": 0.0,
+     "nonzero_p99": 0.0,
+     "prompts": 10,
+     "tokens_before_divergence": 5120
+    },
+    "n40": {
+     "equal_logprob_share": 1.0,
+     "identical_prompts": 40,
+     "max": 0.0,
+     "nonzero_median": 0.0,
+     "nonzero_p99": 0.0,
+     "prompts": 40,
+     "tokens_before_divergence": 20437
+    }
+   }
+  }
+ },
+ "pairs": {},
+ "rollout": {},
+ "runs": {
+  "up5_off_f1": {
+   "engine_init_s": 367.7,
+   "group": "n2",
+   "host": "host-25",
+   "moe_skip_env": null,
+   "moe_skip_flag": false,
+   "node": "host-25",
+   "sha256_16": {
+    "compilation/moe_stock_graph.py": null,
+    "envs.py": "179cf33fa23577fe",
+    "layers/adapter/fused_moe.py": "b70d97be330e0261",
+    "layers/adapter/moe_skip_policy.py": "5db85c4f9dbd2753",
+    "layers/adapter/pipelined_fused_moe.py": "6b75bb7092d9683c",
+    "layers/adapter/quantization/unquantized.py": "e08ed476ce7054d9",
+    "layers/adapter/token_padding.py": "ce2ee8676ee2d7f5",
+    "layers/core/fused_moe_gmm.py": "eea7ebe162853a88",
+    "runner/tpu_runner.py": "1ebd74b2b06f007f"
+   },
+   "unquantized_has_fix": true,
+   "vllm": "0.33.0",
+   "vllm_torchtpu_file": "/opt/arm-up5/src/vllm_torchtpu/__init__.py"
+  },
+  "upbase_off_f1": {
+   "engine_init_s": 294.4,
+   "group": "n2",
+   "host": "host-25",
+   "moe_skip_env": null,
+   "moe_skip_flag": false,
+   "node": "host-25",
+   "sha256_16": {
+    "compilation/moe_stock_graph.py": null,
+    "envs.py": "179cf33fa23577fe",
+    "layers/adapter/fused_moe.py": "53814294ce38b39e",
+    "layers/adapter/moe_skip_policy.py": null,
+    "layers/adapter/pipelined_fused_moe.py": "37ece2b1ae311e78",
+    "layers/adapter/quantization/unquantized.py": "5135462ae72a39a0",
+    "layers/adapter/token_padding.py": "51fb4532d9e799e3",
+    "layers/core/fused_moe_gmm.py": "3b5c039ecbe93f1e",
+    "runner/tpu_runner.py": "e71e36e49f572bc1"
+   },
+   "unquantized_has_fix": false,
+   "vllm": "0.33.0",
+   "vllm_torchtpu_file": "/opt/arm-upbase/src/vllm_torchtpu/__init__.py"
+  }
+ },
+ "sweep": {
+  "mean_by_config": {},
+  "median_ms_per_step": {}
+ }
+}
