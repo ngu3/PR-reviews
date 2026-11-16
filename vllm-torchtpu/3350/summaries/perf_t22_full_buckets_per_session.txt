@@ -1,0 +1,8 @@
+## host host-10  kv {"up_on_k1": [9573], "up_on_k2": [9573], "upbase_off_k1": [9573], "upbase_off_k2": [9574]}
+   n= 32 ref 10.6070 ms (A/A 0.2) | up_on -0.250% (A/A -0.001, noise 0.200; vs each ref -0.15, -0.35)
+   n= 64 ref 14.5313 ms (A/A 1.074) | up_on +0.969% (A/A -0.023, noise 1.074; vs each ref +1.51, +0.43)
+   n=128 ref 20.0385 ms (A/A 0.463) | up_on -0.290% (A/A -0.01, noise 0.463; vs each ref -0.06, -0.52)
+## host host-11  kv {"up_on_m1": [9573], "up_on_m2": [9573], "upbase_off_m1": [9574], "upbase_off_m2": [9573]}
+   n= 32 ref 10.6158 ms (A/A -0.086) | up_on -0.455% (A/A 0.026, noise 0.100; vs each ref -0.50, -0.41)
+   n= 64 ref 14.5429 ms (A/A -1.01) | up_on +0.813% (A/A 0.08, noise 1.010; vs each ref +0.30, +1.33)
+   n=128 ref 20.0332 ms (A/A -0.459) | up_on -0.306% (A/A 0.069, noise 0.459; vs each ref -0.53, -0.08)

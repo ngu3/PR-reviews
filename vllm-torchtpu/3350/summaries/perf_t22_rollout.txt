@@ -1,0 +1,4 @@
+## host host-06  arms {"up_on": ["up_on_r1", "up_on_r2"], "upbase_off": ["upbase_off_r1", "upbase_off_r2"]}
+   rollout                rollout: ref 20.97591 s, up_on -11.928% (sessions [-12.027, -11.829]), A/A base 0.089 on 0.225, noise 0.225 -> FASTER
+NOTES:
+   host-06: KV blocks differ {'up_on_r1': [9573], 'up_on_r2': [9573], 'upbase_off_r1': [9573], 'upbase_off_r2': [9574]}

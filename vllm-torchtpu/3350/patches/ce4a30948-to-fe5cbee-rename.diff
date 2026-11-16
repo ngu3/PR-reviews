@@ -1,0 +1,245 @@
+diff --git a/src/vllm_torchtpu/layers/adapter/moe_skip_policy.py b/src/vllm_torchtpu/layers/adapter/moe_skip_policy.py
+index b8dbc2729..9bdea0269 100644
+--- a/src/vllm_torchtpu/layers/adapter/moe_skip_policy.py
++++ b/src/vllm_torchtpu/layers/adapter/moe_skip_policy.py
+@@ -24,12 +24,12 @@ backbone tracing so ``TPUModelRunner``, ``TokenPaddingState`` and
+ ``VllmUnquantizedFusedMoEMethod`` share one effective mode:
+ 
+ - Supported BF16 topology:
+-  ``skip_padded_tokens=True, padding_rows="count", row_info=<local_num_valid>``
++  ``skip_padded_tokens=True, padding_rows="count", row_info=<local_valid_tokens>``
+ - ``flag-off``, EP fallback, or unsupported topologies (DP > 1, PP > 1,
+   PCP > 1, DCP > 1, pipelined MoE collective, fused MoE decode kernels,
+   speculative decoding / drafter, LoRA, non-BF16 / mixed MoE):
+   ``skip_padded_tokens=False, padding_rows=None, row_info=None`` (and no
+-  ``local_num_valid`` allocation).
++  ``local_valid_tokens`` allocation).
+ """
+ 
+ from __future__ import annotations
+diff --git a/src/vllm_torchtpu/layers/adapter/quantization/unquantized.py b/src/vllm_torchtpu/layers/adapter/quantization/unquantized.py
+index 610a9d931..400d64a5d 100644
+--- a/src/vllm_torchtpu/layers/adapter/quantization/unquantized.py
++++ b/src/vllm_torchtpu/layers/adapter/quantization/unquantized.py
+@@ -426,11 +426,11 @@ class VllmUnquantizedFusedMoEMethod(TpuMoEActivationMixin, UnquantizedFusedMoEMe
+         # - Flag-off, EP / unsupported fallback:
+         #     (skip_padded_tokens=False, padding_rows=None, row_info omitted)
+         if self._skip_padded_tokens and self._padding_rows == "count":
+-            row_info = token_padding.get_local_num_valid()
++            row_info = token_padding.get_local_valid_tokens()
+             if row_info is None:
+                 raise RuntimeError(
+                     "BF16 MoeSkip count mode requires TokenPaddingState with "
+-                    "track_valid_count=True."
++                    "track_valid_tokens=True."
+                 )
+             skip_padded_tokens = True
+             padding_rows: str | None = "count"
+diff --git a/src/vllm_torchtpu/layers/adapter/token_padding.py b/src/vllm_torchtpu/layers/adapter/token_padding.py
+index bc6a78626..869c387e1 100644
+--- a/src/vllm_torchtpu/layers/adapter/token_padding.py
++++ b/src/vllm_torchtpu/layers/adapter/token_padding.py
+@@ -24,9 +24,9 @@ class TokenPaddingState:
+     """Track token padding."""
+ 
+     local_padding_mask: torch.Tensor
+-    # 1-element int32 count of valid prefix rows; allocated and updated only
+-    # when BF16 row-count MoeSkip is active (track_valid_count=True).
+-    local_num_valid: torch.Tensor | None = None
++    # This rank's valid-token count as a 1-element int32 device tensor, read by
++    # every MoE layer; allocated and updated only with track_valid_tokens=True.
++    local_valid_tokens: torch.Tensor | None = None
+ 
+     @classmethod
+     def create(
+@@ -34,18 +34,18 @@ class TokenPaddingState:
+         max_local_tokens: int,
+         device,
+         *,
+-        track_valid_count: bool = False,
++        track_valid_tokens: bool = False,
+     ) -> "TokenPaddingState":
+         local_padding_mask = torch.zeros(
+             max_local_tokens, dtype=torch.bool, device=device
+         )
+-        local_num_valid = (
++        local_valid_tokens = (
+             torch.zeros(1, dtype=torch.int32, device=device)
+-            if track_valid_count
++            if track_valid_tokens
+             else None
+         )
+         return cls(
+-            local_padding_mask=local_padding_mask, local_num_valid=local_num_valid
++            local_padding_mask=local_padding_mask, local_valid_tokens=local_valid_tokens
+         )
+ 
+     def update(self, local_valid_tokens: int, local_padded_tokens: int) -> None:
+@@ -54,8 +54,8 @@ class TokenPaddingState:
+         host[local_valid_tokens:local_padded_tokens] = True
+         # Synchronous copy since the host tensor is temporary.
+         self.local_padding_mask.copy_(host)
+-        if self.local_num_valid is not None:
+-            self.local_num_valid.copy_(
++        if self.local_valid_tokens is not None:
++            self.local_valid_tokens.copy_(
+                 torch.tensor([local_valid_tokens], dtype=torch.int32)
+             )
+ 
+@@ -68,11 +68,11 @@ def set_padding_state(state: "TokenPaddingState | None") -> None:
+     _padding_state = state
+ 
+ 
+-def get_local_num_valid() -> torch.Tensor | None:
++def get_local_valid_tokens() -> torch.Tensor | None:
+     """Return this rank's 1-element int32 valid-row count tensor, or None."""
+     if _padding_state is None:
+         return None
+-    return _padding_state.local_num_valid
++    return _padding_state.local_valid_tokens
+ 
+ 
+ def mark_padding(num_valid_tokens: int, num_padded_tokens: int) -> None:
+diff --git a/src/vllm_torchtpu/runner/tpu_runner.py b/src/vllm_torchtpu/runner/tpu_runner.py
+index 6038b5f46..eaa0f1057 100644
+--- a/src/vllm_torchtpu/runner/tpu_runner.py
++++ b/src/vllm_torchtpu/runner/tpu_runner.py
+@@ -6141,7 +6141,7 @@ class TPUModelRunner(GPUModelRunner):
+             self._token_padding_state = token_padding.TokenPaddingState.create(
+                 max_padded_tokens,
+                 self.device,
+-                track_valid_count=self._bf16_moe_skip_policy.enabled,
++                track_valid_tokens=self._bf16_moe_skip_policy.enabled,
+             )
+             token_padding.set_padding_state(self._token_padding_state)
+ 
+@@ -7830,7 +7830,7 @@ class TPUModelRunner(GPUModelRunner):
+         Runs immediately after model loading and before TokenPaddingState
+         allocation or backbone tracing so dense models or models with mixed /
+         non-BF16 MoE layers cleanly fall back to the stock contract without
+-        allocating ``local_num_valid``.
++        allocating ``local_valid_tokens``.
+         """
+         if not self._bf16_moe_skip_policy.enabled:
+             return
+diff --git a/tests/layers/adapter/quantization/test_unquantized_moe_skip.py b/tests/layers/adapter/quantization/test_unquantized_moe_skip.py
+index 92db55715..0c7cc9802 100644
+--- a/tests/layers/adapter/quantization/test_unquantized_moe_skip.py
++++ b/tests/layers/adapter/quantization/test_unquantized_moe_skip.py
+@@ -15,7 +15,7 @@
+ 
+ Covers all three execution rows:
+ - Supported BF16 topology (row-count MoeSkip):
+-    (skip_padded_tokens=True, padding_rows="count", row_info=local_num_valid)
++    (skip_padded_tokens=True, padding_rows="count", row_info=local_valid_tokens)
+ - flag-off:
+     (skip_padded_tokens=False, padding_rows=None, row_info omitted)
+ - EP / DP / PP / PCP / DCP / pipelined / unsupported fallback:
+@@ -122,10 +122,10 @@ def _run_forward(method: VllmUnquantizedFusedMoEMethod, layer=None):
+ 
+ 
+ def test_count_forward_passes_count_and_does_not_zero_weights(capture_forward):
+-    """Supported row-count path passes padding_rows='count' and local_num_valid
++    """Supported row-count path passes padding_rows='count' and local_valid_tokens
+     without touching routing weights (so padded rows stay non-zero and real
+     zero-gate rows keep stock dispatch)."""
+-    state = token_padding.TokenPaddingState.create(16, "cpu", track_valid_count=True)
++    state = token_padding.TokenPaddingState.create(16, "cpu", track_valid_tokens=True)
+     state.update(2, 4)
+     token_padding.set_padding_state(state)
+     try:
+@@ -139,7 +139,7 @@ def test_count_forward_passes_count_and_does_not_zero_weights(capture_forward):
+     call = capture_forward.fused_calls[0]
+     assert call["skip_padded_tokens"] is True
+     assert call["padding_rows"] == "count"
+-    assert call["row_info"] is state.local_num_valid
++    assert call["row_info"] is state.local_valid_tokens
+     assert int(call["row_info"].item()) == 2
+     # Padded rows keep their original non-zero weights (exclusion is by count).
+     assert torch.equal(call["topk_weights"], capture_forward.weights)
+@@ -148,7 +148,7 @@ def test_count_forward_passes_count_and_does_not_zero_weights(capture_forward):
+ def test_stock_contract_when_disabled_or_fallback(capture_forward, monkeypatch):
+     """Flag-off / EP / unsupported fallback passes (False, None) and omits
+     row_info, even when pipelined_fused_moe_gmm is active."""
+-    state = token_padding.TokenPaddingState.create(16, "cpu", track_valid_count=True)
++    state = token_padding.TokenPaddingState.create(16, "cpu", track_valid_tokens=True)
+     state.update(1, 4)
+     token_padding.set_padding_state(state)
+     try:
+@@ -171,12 +171,12 @@ def test_stock_contract_when_disabled_or_fallback(capture_forward, monkeypatch):
+         assert "row_info" not in call
+ 
+ 
+-def test_count_mode_raises_if_local_num_valid_missing(capture_forward):
+-    state = token_padding.TokenPaddingState.create(16, "cpu", track_valid_count=False)
++def test_count_mode_raises_if_local_valid_tokens_missing(capture_forward):
++    state = token_padding.TokenPaddingState.create(16, "cpu", track_valid_tokens=False)
+     token_padding.set_padding_state(state)
+     try:
+         method = _method(skip_padded_tokens=True, padding_rows="count")
+-        with pytest.raises(RuntimeError, match="track_valid_count=True"):
++        with pytest.raises(RuntimeError, match="track_valid_tokens=True"):
+             _run_forward(method)
+     finally:
+         token_padding.set_padding_state(None)
+diff --git a/tests/runner/test_bf16_moe_skip_runner.py b/tests/runner/test_bf16_moe_skip_runner.py
+index 466dd6f77..aa12cd361 100644
+--- a/tests/runner/test_bf16_moe_skip_runner.py
++++ b/tests/runner/test_bf16_moe_skip_runner.py
+@@ -81,7 +81,7 @@ def _supported_runner(monkeypatch):
+ 
+ def test_every_step_updates_padding_state_including_full_buckets():
+     """Single graph: every step, full buckets included, writes the padding
+-    state (mask and, in count mode, local_num_valid) before forward."""
++    state (mask and, in count mode, local_valid_tokens) before forward."""
+     runner = _runner()
+     steps = [(15, 16), (16, 16), (255, 256), (256, 256), (32, 32)]
+     for valid, padded in steps:
+diff --git a/tests/test_token_padding.py b/tests/test_token_padding.py
+index 5ddb8ee52..dbcaeb863 100644
+--- a/tests/test_token_padding.py
++++ b/tests/test_token_padding.py
+@@ -213,32 +213,32 @@ def test_mask_router_logits_for_padding():
+     assert token_padding.mask_router_logits_for_padding(logits) is logits
+ 
+ 
+-def test_valid_count_allocation_is_gated_by_track_valid_count():
++def test_valid_tokens_allocation_is_gated_by_track_valid_tokens():
+     state_off = TokenPaddingState.create(8, "cpu")
+-    assert state_off.local_num_valid is None
++    assert state_off.local_valid_tokens is None
+     token_padding.set_padding_state(state_off)
+     try:
+         state_off.update(3, 8)
+-        assert state_off.local_num_valid is None
+-        assert token_padding.get_local_num_valid() is None
++        assert state_off.local_valid_tokens is None
++        assert token_padding.get_local_valid_tokens() is None
+     finally:
+         token_padding.set_padding_state(None)
+ 
+-    state_on = TokenPaddingState.create(8, "cpu", track_valid_count=True)
+-    assert state_on.local_num_valid is not None
+-    assert state_on.local_num_valid.shape == (1,)
+-    assert state_on.local_num_valid.dtype == torch.int32
++    state_on = TokenPaddingState.create(8, "cpu", track_valid_tokens=True)
++    assert state_on.local_valid_tokens is not None
++    assert state_on.local_valid_tokens.shape == (1,)
++    assert state_on.local_valid_tokens.dtype == torch.int32
+     token_padding.set_padding_state(state_on)
+     try:
+         state_on.update(5, 8)
+-        count = token_padding.get_local_num_valid()
+-        assert count is state_on.local_num_valid
++        count = token_padding.get_local_valid_tokens()
++        assert count is state_on.local_valid_tokens
+         assert count is not None and count.tolist() == [5]
+         state_on.update(0, 8)
+         assert count.tolist() == [0]
+     finally:
+         token_padding.set_padding_state(None)
+-    assert token_padding.get_local_num_valid() is None
++    assert token_padding.get_local_valid_tokens() is None
+ 
+ 
+ def test_update_writes_mask_every_call_without_caching():

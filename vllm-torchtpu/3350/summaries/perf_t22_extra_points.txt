@@ -1,0 +1,23 @@
+## host host-10  arms {"up_on": ["up_on_k1", "up_on_k2"], "upbase_off": ["upbase_off_k1", "upbase_off_k2"]}
+   steady                      10: ref 7.24337 ms/step, up_on -10.952% (sessions [-10.962, -10.941]), A/A base 0.104 on 0.024, noise 0.104 -> FASTER
+   steady                      12: ref 7.50666 ms/step, up_on -7.736% (sessions [-7.732, -7.74]), A/A base 0.106 on -0.009, noise 0.106 -> FASTER
+   steady                      14: ref 7.62901 ms/step, up_on -3.965% (sessions [-3.966, -3.965]), A/A base 0.114 on 0.001, noise 0.114 -> FASTER
+   steady                      24: ref 10.25001 ms/step, up_on -7.814% (sessions [-7.83, -7.799]), A/A base 0.186 on 0.034, noise 0.186 -> FASTER
+   steady                      31: ref 10.67830 ms/step, up_on -2.073% (sessions [-2.073, -2.073]), A/A base 0.199 on 0.0, noise 0.199 -> FASTER
+   steady                      32: ref 10.60698 ms/step, up_on -0.250% (sessions [-0.25, -0.251]), A/A base 0.2 on -0.001, noise 0.2 -> FASTER
+   steady                      64: ref 14.53127 ms/step, up_on +0.969% (sessions [0.98, 0.957]), A/A base 1.074 on -0.023, noise 1.074 -> WITHIN NOISE
+   steady                     128: ref 20.03848 ms/step, up_on -0.290% (sessions [-0.285, -0.296]), A/A base 0.463 on -0.01, noise 0.463 -> WITHIN NOISE
+   steady                     250: ref 28.10796 ms/step, up_on -0.417% (sessions [-0.415, -0.418]), A/A base -0.085 on -0.004, noise 0.1 -> FASTER
+## host host-11  arms {"up_on": ["up_on_m1", "up_on_m2"], "upbase_off": ["upbase_off_m1", "upbase_off_m2"]}
+   steady                      10: ref 7.25669 ms/step, up_on -10.991% (sessions [-11.181, -10.802]), A/A base -0.161 on 0.427, noise 0.427 -> FASTER
+   steady                      12: ref 7.51724 ms/step, up_on -7.798% (sessions [-7.959, -7.636]), A/A base -0.183 on 0.351, noise 0.351 -> FASTER
+   steady                      14: ref 7.64103 ms/step, up_on -4.019% (sessions [-4.188, -3.849]), A/A base -0.247 on 0.353, noise 0.353 -> FASTER
+   steady                      24: ref 10.25741 ms/step, up_on -8.006% (sessions [-8.023, -7.989]), A/A base -0.06 on 0.037, noise 0.1 -> FASTER
+   steady                      31: ref 10.68938 ms/step, up_on -2.281% (sessions [-2.305, -2.256]), A/A base -0.094 on 0.05, noise 0.1 -> FASTER
+   steady                      32: ref 10.61580 ms/step, up_on -0.455% (sessions [-0.468, -0.442]), A/A base -0.086 on 0.026, noise 0.1 -> FASTER
+   steady                      64: ref 14.54293 ms/step, up_on +0.813% (sessions [0.773, 0.854]), A/A base -1.01 on 0.08, noise 1.01 -> WITHIN NOISE
+   steady                     128: ref 20.03321 ms/step, up_on -0.306% (sessions [-0.34, -0.271]), A/A base -0.459 on 0.069, noise 0.459 -> WITHIN NOISE
+   steady                     250: ref 28.11255 ms/step, up_on -0.497% (sessions [-0.507, -0.486]), A/A base 0.15 on 0.021, noise 0.15 -> FASTER
+NOTES:
+   host-10: KV blocks differ {'up_on_k1': [9573], 'up_on_k2': [9573], 'upbase_off_k1': [9573], 'upbase_off_k2': [9574]}
+   host-11: KV blocks differ {'up_on_m1': [9573], 'up_on_m2': [9573], 'upbase_off_m1': [9574], 'upbase_off_m2': [9573]}

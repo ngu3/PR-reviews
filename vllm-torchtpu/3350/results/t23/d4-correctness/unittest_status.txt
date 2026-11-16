@@ -1,0 +1,14 @@
+new-test upbar sha256=b612e53b0c6c9664
+dual-test upbar tests/layers/core/test_moe_padding_rows.py sha256=54999b6caf5eeb21
+dual-test upbar tests/layers/core/test_fused_moe_gmm.py sha256=bcaf2f0c4cd87b67
+dual-test upbar tests/kernels/test_router_topk.py sha256=2476694d6780cd0b
+dual-test upbar tests/layers/adapter/test_moe_routing.py sha256=8795ab929bcd30c3
+dual-test upbar tests/layers/adapter/test_moe_skip_policy.py sha256=fe77e3788bf8f656
+dual-test upbar tests/runner/test_bf16_moe_skip_runner.py sha256=efbbb80bb12fa678
+dual-test upbar tests/layers/adapter/test_fused_moe.py sha256=bd80b4f23bd5c4c4
+dual-test upbar tests/layers/adapter/test_moe_runner.py sha256=d36ac9d43c3db8fa
+dual-test upbar tests/runner/test_tpu_runner.py sha256=e769f13a50ed1022
+dual-test upbar tests/runner/test_tpu_runner_lora.py sha256=0d0a4bc1e05fcae8
+dual-test upbar tests/test_envs.py sha256=921ca2e6e54a2eaf
+pytest upbar rc=0 836 passed, 19 warnings in 340.57s (0:05:40)
+typecheck upbar rc=0 pyrefly: 305 errors, each matched by one entry in .pyrefly-baseline-full.json.

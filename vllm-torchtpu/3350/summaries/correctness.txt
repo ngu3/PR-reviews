@@ -1,0 +1,37 @@
+### TP=4 numerics, candidate ce4a30948 on/off vs parent (t22 a0)
+bit-identical groups: [['up_off_f1', 'up_on_f1', 'upbase_off_f1']]
+CHECK PASS (2 runs against upbase_off_f1; differ: none)
+N1 PASS: 2 arms vs upbase_off_f1; sequence [16, 10, 16, 1, 16, 15, 12, 16, 3, 17, 32, 16, 256, 250, 255, 256]; 51382 reference tokens
+
+### TP=4 numerics, head fe5cbee flag on (t22b b0)
+bit-identical groups: [['up2_on_f1', 'upbase_off_f1']]
+CHECK PASS (1 runs against upbase_off_f1; differ: none)
+N1 PASS: 1 arms vs upbase_off_f1; sequence [16, 10, 16, 1, 16, 15, 12, 16, 3, 17, 32, 16, 256, 250, 255, 256]; 51382 reference tokens
+
+### TP=4 numerics, head fe5cbee flag off (t22c c0)
+bit-identical groups: [['up2_off_f1', 'upbase_off_f1']]
+CHECK PASS (1 runs against upbase_off_f1; differ: none)
+N1 PASS: 1 arms vs upbase_off_f1; sequence [16, 10, 16, 1, 16, 15, 12, 16, 3, 17, 32, 16, 256, 250, 255, 256]; 51382 reference tokens
+
+### TP=4 + EP fallback (t22 a4)
+bit-identical groups: [['up_on_e1', 'upbase_off_e1']]
+CHECK PASS (1 runs against upbase_off_e1; differ: none)
+N1 PASS: 1 arms vs upbase_off_e1; sequence [16, 10, 16, 1, 16, 15, 12, 16, 3, 17, 32, 16]; 25762 reference tokens
+
+### vllm serve TP=4 (t22 a5)
+  up_on_d1 single: 10/10 requests identical to upbase_off_d1 (1280 tokens)
+  up_on_d1 concurrent: 0/16 identical to upbase_off_d1 (diagnostic; 2048 tokens)
+  up_on_d1 uneven: 0/3 identical to upbase_off_d1 (diagnostic; 384 tokens)
+SERVED PASS: 1 arms vs upbase_off_d1; layout tp/dp/ep/env = (4, 1, False, ())
+
+### Direct MoE check (N2)
+results/t22/a0-correctness/n2_up.json.gz: ok= True cases= 45 failed= [] buckets= 16:0,1,5,12,15,16;32:17,24,31,32;64:33,64;256:250,255,256 seeds= 0,1,2
+results/t22b/b1-head-n2/n2_up2.json.gz: ok= True cases= 45 failed= [] buckets= 16:0,1,5,12,15,16;32:17,24,31,32;64:33,64;256:250,255,256 seeds= 0,1,2
+
+### Unit tests and type check
+pytest up rc=0 836 passed, 19 warnings in 344.54s (0:05:44)
+typecheck up rc=0 pyrefly: 305 errors, each matched by one entry in .pyrefly-baseline-full.json.
+pytest upbase rc=0 772 passed, 19 warnings in 324.18s (0:05:24)
+typecheck upbase rc=0 pyrefly: 305 errors, each matched by one entry in .pyrefly-baseline-full.json.
+pytest up2 rc=0 836 passed, 19 warnings in 341.92s (0:05:41)
+typecheck up2 rc=0 pyrefly: 305 errors, each matched by one entry in .pyrefly-baseline-full.json.

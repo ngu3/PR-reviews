@@ -1,0 +1,17 @@
+== host host-01 [COMPLETE]: arms {'base_off': ['base_off_u1', 'base_off_u2'], 'gz_on': ['gz_on_u1', 'gz_on_u2']}
+   n=  1 ref 5.3254 ms A/A 0.714% | gz_on -23.441% (gz A/A 0.357%)
+   n= 15 ref 7.6707 ms A/A 0.401% | gz_on +1.547% (gz A/A -0.017%)
+   n= 16 ref 7.6271 ms A/A 0.348% | gz_on +4.554% (gz A/A 0.053%)
+   n=256 ref 28.0829 ms A/A 0.214% | gz_on +0.638% (gz A/A 0.005%)
+   verdict gatezero: {"15": {"gz_vs_ref_pct": 1.547, "noise": 0.401, "verdict": "SLOWER"}, "16": {"gz_vs_ref_pct": 4.554, "noise": 0.348, "verdict": "SLOWER"}, "256": {"gz_vs_ref_pct": 0.638, "noise": 0.214, "verdict": "SLOWER"}, "regression_gone": false, "n1_vs_ref_pct": -23.441, "benefit_kept": true}
+== host host-02 [COMPLETE]: arms {'base_off': ['base_off_v1', 'base_off_v2'], 'gz_on': ['gz_on_v1', 'gz_on_v2']}
+   n=  1 ref 5.3392 ms A/A 0.051% | gz_on -24.336% (gz A/A 0.022%)
+   n= 15 ref 7.6953 ms A/A -0.047% | gz_on +1.189% (gz A/A -0.009%)
+   n= 16 ref 7.6498 ms A/A -0.062% | gz_on +4.257% (gz A/A -0.005%)
+   n=256 ref 28.1088 ms A/A -0.157% | gz_on +0.624% (gz A/A 0.031%)
+   verdict gatezero: {"15": {"gz_vs_ref_pct": 1.189, "noise": 0.1, "verdict": "SLOWER"}, "16": {"gz_vs_ref_pct": 4.257, "noise": 0.1, "verdict": "SLOWER"}, "256": {"gz_vs_ref_pct": 0.624, "noise": 0.157, "verdict": "SLOWER"}, "regression_gone": false, "n1_vs_ref_pct": -24.336, "benefit_kept": true}
+STATUS COMPLETE (2 complete host(s))
+DECISION {"regression_gone": false, "benefit_kept": true, "full_acceptance": false}
+NOTES:
+  host-01: KV blocks differ {'base_off_u1': [9574], 'base_off_u2': [9573], 'gz_on_u1': [9573], 'gz_on_u2': [9573]}
+  host-02: KV blocks differ {'base_off_v1': [9573], 'base_off_v2': [9574], 'gz_on_v1': [9573], 'gz_on_v2': [9573]}

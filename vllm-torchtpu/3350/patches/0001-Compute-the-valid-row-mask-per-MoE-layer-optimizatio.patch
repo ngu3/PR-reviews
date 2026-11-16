@@ -1,0 +1,34 @@
+From 7110bd01a6132779e0ac84ba244ba3a6c725f4a5 Mon Sep 17 00:00:00 2001
+From: Summer Yang <xiaotongyang@google.com>
+Date: Mon, 16 Nov 2026 10:31:20 +0000
+Subject: [PATCH] Compute the valid-row mask per MoE layer (optimization
+ barrier)
+
+---
+ src/vllm_torchtpu/layers/core/fused_moe_gmm.py | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/src/vllm_torchtpu/layers/core/fused_moe_gmm.py b/src/vllm_torchtpu/layers/core/fused_moe_gmm.py
+index df1c42e36..6efc1292f 100644
+--- a/src/vllm_torchtpu/layers/core/fused_moe_gmm.py
++++ b/src/vllm_torchtpu/layers/core/fused_moe_gmm.py
+@@ -381,9 +381,14 @@ def prepare_routed_gmm_inputs(
+ 
+     if skip_padded_tokens and padding_rows == "count":
+         assert row_info is not None
+-        valid_mask = (topk_indices_flat >= 0) & (
+-            token_indices_flat < row_info.reshape(-1)[0]
++        # Tie the count to this layer's expert ids so the row mask is computed
++        # inside each layer. Without the barrier XLA hoists one mask shared by
++        # every MoE layer, a long-lived value that changes memory-space
++        # assignment and the program layout even on full buckets.
++        num_valid, topk_indices_flat = jax.lax.optimization_barrier(
++            (row_info.reshape(-1)[0], topk_indices_flat)
+         )
++        valid_mask = (topk_indices_flat >= 0) & (token_indices_flat < num_valid)
+     elif skip_padded_tokens:
+         # Padded tokens keep their selected expert ids, but carry zero
+         # expert routing weights. Treat them as invalid to remove them
+-- 
+2.56.1.703.gf848ed807c-goog
+
