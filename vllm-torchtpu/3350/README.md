@@ -9,7 +9,9 @@ Raw results (gzip JSON written by [`tools/mskip_engine.py`](tools/mskip_engine.p
 | Tree (label prefix) | Source | Used for |
 |---|---|---|
 | `upbase` | vllm-torchtpu `6cc233d90` (main, the PR's parent) | baseline in every comparison |
-| `up5` | `16ed9b0a7` (the PR head: `9d9fcb849` + the second review's nits) | t27: unit tests and type check, flag-on and flag-off numerics, EP fallback, MTP drafter, XLA dumps vs `up3` |
+| `up6` | `975685ab2` (the PR head: `16ed9b0a7` + `padded_row_filter` / `row_info` input checks) | t28: unit tests and type check |
+| `up5mc`, `up5nb` | `16ed9b0a7` with the count copied but no padding-mask write (1 blocking copy per step), and with the count copied non-blocking (0 blocking copies); experiment only | t28: copy cost and async-scheduling overlap |
+| `up5` | `16ed9b0a7` (`9d9fcb849` + the second review's nits) | t27: unit tests and type check, flag-on and flag-off numerics, EP fallback, MTP drafter, XLA dumps vs `up3` |
 | `up4` | `9d9fcb849` (`056cee01c` + TPU tests of the row-count kernel and custom op; same `src/`) | t26: unit tests and type check |
 | `up3` | `056cee01c` (`fe5cbee79` + the first review's fixes) | t25: unit tests, direct MoE check, flag-on and flag-off numerics, GSM8K quality, EP fallback, MTP drafter, decode time |
 | `up2` | `fe5cbee79` (the head before the review fixes) | t22b / t22c numerics, t23 / t24 performance, t25 MTP failure reproduction and before/after decode time |
@@ -17,7 +19,7 @@ Raw results (gzip JSON written by [`tools/mskip_engine.py`](tools/mskip_engine.p
 | `upbar` | `fe5cbee79` + [per-layer mask variant](patches/0001-Compute-the-valid-row-mask-per-MoE-layer-optimizatio.patch) (not in the PR) | t23 variant |
 | `base`, `gz` | `15be35dad`, and `15be35dad` + [zero-weight approach](patches/gate-zero-on-15be35d/) | gate-zero comparison quoted in the PR |
 
-Arms are labelled `<tree>_<on|off>_<rep>`; `on` means `TPU_MOE_SKIP_PADDED_TOKENS=1`. A tree name ending in `k<blocks>` (t24, t25, t27) pins the KV cache to that many blocks (`num_gpu_blocks_override`). The arms quoted in the PR:
+Arms are labelled `<tree>_<on|off>_<rep>`; `on` means `TPU_MOE_SKIP_PADDED_TOKENS=1`. A tree name ending in `sy` (t28) runs with async scheduling off. A tree name ending in `k<blocks>` (t24, t25, t27, t28) pins the KV cache to that many blocks (`num_gpu_blocks_override`). The arms quoted in the PR:
 
 | Arm | Source | Flag | Where |
 |---|---|---|---|
@@ -38,6 +40,8 @@ Arms are labelled `<tree>_<on|off>_<rep>`; `on` means `TPU_MOE_SKIP_PADDED_TOKEN
 | Claim | Results | Output |
 |---|---|---|
 | Head `16ed9b0a7`: unit tests 1,174 passed, Pyrefly baseline; numerics + switching sequence (flag on and off), EP fallback and MTP drafter bit-identical to the parent; the fallback warning only in the EP and MTP runs; decode programs identical to `056cee01c`'s (XLA dumps, flag on and off) | `t27/*` (dumps not included) | [t27](summaries/t27_nits_head.txt), [HLO](summaries/hlo_t27_nits.txt) |
+| Blocking padding-state copies: no measurable cost, and they do not break async-scheduling overlap (pre-registered; two hosts, KV pinned, async on / off) | `t28/a1-async-copies`, `t28/a2-async-copies` | [t28](summaries/t28_async_copies.txt) |
+| Head `975685ab2`: unit tests 1,178 passed, Pyrefly baseline | `t28/u0-unit-head` | [t28](summaries/t28_async_copies.txt) |
 | `9d9fcb849`: unit tests 1,174 passed (incl. the 9 added TPU cases), Pyrefly baseline | `t26/u0-unit-head` (status, pytest and Pyrefly logs) | [t26](summaries/t26_unit_tests_head.txt) |
 | `056cee01c`: unit tests 1,165 / parent 1,094, Pyrefly baseline, direct MoE check 45/45 | `t25/q0-unit-n2` | [t25 validation](summaries/t25_validation.txt) |
 | `056cee01c`: numerics + switching sequence vs parent, flag on and off; GSM8K quality (1,319 prompts, greedy and sampled) | `t25/q1-correctness-quality` | [t25 validation](summaries/t25_validation.txt) |
@@ -57,6 +61,7 @@ Arms are labelled `<tree>_<on|off>_<rep>`; `on` means `TPU_MOE_SKIP_PADDED_TOKEN
 From this folder (Python 3, standard library):
 
 ```bash
+python3 tools/t28_verdict.py results/t28
 python3 tools/analyze_mskip.py results/t27/n1-head-on --check --ref upbase_off_f1
 python3 tools/analyze_mskip.py results/t27/n2-head-off --check --ref upbase_off_f1
 python3 tools/analyze_mskip.py results/t27/e1-ep-fallback --check --ref upbase_off_e1

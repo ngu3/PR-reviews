@@ -1,0 +1,81 @@
+t28: do the blocking padding-state copies cost time, and do they break async-scheduling overlap? (review of #3350)
+Same image as the other runs plus three trees: up5mc = 16ed9b0a7 with the count copied but no padding-mask write (1 blocking
+H2D copy per step), up5nb = up5mc with the count copied non-blocking from a 4-slot host ring (0 blocking copies), up6 =
+16ed9b0a7 + 975685ab2. KV cache pinned to 9,574 blocks in every arm; tree suffix sy = async scheduling off
+(LLM(async_scheduling=False)); every arm logs the effective async_scheduling. Two hosts, opposite orders; steady decode
+per step = (t(545) - t(33)) / 512, median of 5 pairs; upbase and up5 ran twice per host (A/A).
+
+Pre-registered (2026-11-16 23:50 UTC, before any result), see tools/t28_verdict.py:
+  C1 copy cost: holds at n if on every host up5nb / up5 - 1 < -noise, noise = max(|A/A upbase|, |A/A up5|, 0.10%).
+  C2 overlap:   holds at n if on every host (up5 / upbase - 1) - (up5sy / upbasesy - 1) > noise.
+  C3 sanity:    async_scheduling True in every arm without sy, False with sy.
+
+$ python3 tools/t28_verdict.py results/t28
+C3 async_scheduling per arm:
+   up5k9574_on_a1           True   ok
+   up5k9574_on_a2           True   ok
+   up5k9574_on_b1           True   ok
+   up5k9574_on_b2           True   ok
+   up5k9574sy_on_a1         False  ok
+   up5k9574sy_on_b1         False  ok
+   up5mck9574_on_a1         True   ok
+   up5mck9574_on_b1         True   ok
+   up5nbk9574_on_a1         True   ok
+   up5nbk9574_on_b1         True   ok
+   upbasek9574_off_a1       True   ok
+   upbasek9574_off_a2       True   ok
+   upbasek9574_off_b1       True   ok
+   upbasek9574_off_b2       True   ok
+   upbasek9574sy_off_a1     False  ok
+   upbasek9574sy_off_b1     False  ok
+
+## host host-28  arms: up5k9574_onx2, up5k9574sy_onx1, up5mck9574_onx1, up5nbk9574_onx1, upbasek9574_offx2, upbasek9574sy_offx1
+   n=  1 upbase 5.3523 ms (A/A +0.136%) up5 A/A +1.079% noise 1.079%
+         C1: up5nb vs up5 -1.045%  up5mc vs up5 -1.013%
+         C2: head vs main async -29.180%  sync -14.305%  gap -14.874%  | async vs sync: main -32.315%  head -44.063%
+   n=  8 upbase 6.8589 ms (A/A +0.187%) up5 A/A +0.467% noise 0.467%
+         C1: up5nb vs up5 -0.493%  up5mc vs up5 -0.488%
+         C2: head vs main async -14.281%  sync -6.205%  gap -8.076%  | async vs sync: main -29.811%  head -35.855%
+   n= 16 upbase 7.6525 ms (A/A +0.048%) up5 A/A +0.214% noise 0.214%
+         C1: up5nb vs up5 -0.201%  up5mc vs up5 -0.169%
+         C2: head vs main async +0.389%  sync +2.907%  gap -2.518%  | async vs sync: main -30.863%  head -32.555%
+   n= 64 upbase 14.6346 ms (A/A +0.092%) up5 A/A +0.005% noise 0.100%
+         C1: up5nb vs up5 -0.035%  up5mc vs up5 -0.080%
+         C2: head vs main async -0.316%  sync +0.681%  gap -0.997%  | async vs sync: main -27.708%  head -28.423%
+   n=256 upbase 28.1629 ms (A/A +0.021%) up5 A/A +0.010% noise 0.100%
+         C1: up5nb vs up5 +0.034%  up5mc vs up5 +0.015%
+         C2: head vs main async +0.304%  sync +2.011%  gap -1.707%  | async vs sync: main -31.502%  head -32.648%
+
+## host host-29  arms: up5k9574_onx2, up5k9574sy_onx1, up5mck9574_onx1, up5nbk9574_onx1, upbasek9574_offx2, upbasek9574sy_offx1
+   n=  1 upbase 5.3434 ms (A/A +0.033%) up5 A/A +0.469% noise 0.469%
+         C1: up5nb vs up5 +0.110%  up5mc vs up5 +1.081%
+         C2: head vs main async -29.723%  sync -17.232%  gap -12.492%  | async vs sync: main -33.742%  head -43.742%
+   n=  8 upbase 6.8586 ms (A/A -0.085%) up5 A/A +0.302% noise 0.302%
+         C1: up5nb vs up5 +0.034%  up5mc vs up5 +0.422%
+         C2: head vs main async -14.566%  sync -8.091%  gap -6.475%  | async vs sync: main -31.102%  head -35.955%
+   n= 16 upbase 7.6490 ms (A/A -0.064%) up5 A/A +0.003% noise 0.100%
+         C1: up5nb vs up5 +0.092%  up5mc vs up5 +0.261%
+         C2: head vs main async +0.236%  sync +3.039%  gap -2.803%  | async vs sync: main -30.802%  head -32.684%
+   n= 64 upbase 14.6465 ms (A/A +0.012%) up5 A/A +0.045% noise 0.100%
+         C1: up5nb vs up5 +0.066%  up5mc vs up5 -0.021%
+         C2: head vs main async -0.423%  sync +1.048%  gap -1.470%  | async vs sync: main -27.396%  head -28.453%
+   n=256 upbase 28.1788 ms (A/A -0.006%) up5 A/A -0.016% noise 0.100%
+         C1: up5nb vs up5 -0.037%  up5mc vs up5 -0.005%
+         C2: head vs main async +0.298%  sync +1.224%  gap -0.926%  | async vs sync: main -31.198%  head -31.827%
+
+Verdict (pre-registered; a criterion holds at n only if it holds on every host):
+   C3 sanity: holds
+   n=  1  C1 copies cost time: does not hold   C2 copies break async overlap: does not hold
+   n=  8  C1 copies cost time: does not hold   C2 copies break async overlap: does not hold
+   n= 16  C1 copies cost time: does not hold   C2 copies break async overlap: does not hold
+   n= 64  C1 copies cost time: does not hold   C2 copies break async overlap: does not hold
+   n=256  C1 copies cost time: does not hold   C2 copies break async overlap: does not hold
+
+### Numerics of the copy variants (fixed batches n1 / n10 / n40, host-28 or host-29 as in the results)
+$ python3 tools/analyze_mskip.py <upbasek9574_off_a1, up5mck9574_on_a1, up5nbk9574_on_a1> --check --ref upbasek9574_off_a1
+bit-identical groups: [['up5mck9574_on_a1', 'up5nbk9574_on_a1', 'upbasek9574_off_a1']]
+CHECK PASS (2 runs against upbasek9574_off_a1; differ: none)
+
+### Unit tests and type check of up6 (u0)
+pytest up6 rc=0 1178 passed, 35 warnings in 388.68s (0:06:28)
+typecheck up6 rc=0 pyrefly: 305 errors, each matched by one entry in .pyrefly-baseline-full.json.

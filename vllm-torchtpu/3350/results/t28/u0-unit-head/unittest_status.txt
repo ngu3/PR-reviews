@@ -1,0 +1,14 @@
+new-test up6 sha256=aee8d7b52b84c178
+dual-test up6 tests/layers/core/test_moe_padding_rows.py sha256=8bb1065a3f794568
+dual-test up6 tests/layers/core/test_fused_moe_gmm.py sha256=b76495599ceb9c6c
+dual-test up6 tests/kernels/test_router_topk.py sha256=2476694d6780cd0b
+dual-test up6 tests/layers/adapter/test_moe_routing.py sha256=8795ab929bcd30c3
+dual-test up6 tests/layers/adapter/test_moe_skip_policy.py sha256=4070a45813cf0a75
+dual-test up6 tests/runner/test_bf16_moe_skip_runner.py sha256=45b25b3a5cb70b9f
+dual-test up6 tests/layers/adapter/test_fused_moe.py sha256=bd80b4f23bd5c4c4
+dual-test up6 tests/layers/adapter/test_moe_runner.py sha256=d36ac9d43c3db8fa
+dual-test up6 tests/runner/test_tpu_runner.py sha256=e769f13a50ed1022
+dual-test up6 tests/runner/test_tpu_runner_lora.py sha256=0d0a4bc1e05fcae8
+dual-test up6 tests/test_envs.py sha256=921ca2e6e54a2eaf
+pytest up6 rc=0 1178 passed, 35 warnings in 388.68s (0:06:28)
+typecheck up6 rc=0 pyrefly: 305 errors, each matched by one entry in .pyrefly-baseline-full.json.
