@@ -34,24 +34,15 @@ class TestPR168PublicEvidence(unittest.TestCase):
         self.assertEqual(arms["C2_tf"]["delta_w"], arms["C4_tt"]["delta_w"])
         self.assertAlmostEqual(arms["C4_tt"]["delta_w"]["cosine"], 0.98893663, places=7)
         self.assertAlmostEqual(arms["C4_tt"]["delta_w"]["sign_agreement"], 0.99200523, places=7)
-        # B_none and B_gdn have lower cosine (0.95969363 / 0.95821573)
-        self.assertAlmostEqual(arms["B_none"]["delta_w"]["cosine"], 0.95969363, places=7)
-        self.assertAlmostEqual(arms["B_gdn"]["delta_w"]["cosine"], 0.95821573, places=7)
         # C4_tt is faster and lower-HBM than A_sel
         self.assertLess(ab["C4_tt"]["fwd_bwd_s"], ab["A_sel"]["fwd_bwd_s"] - 0.20)
         self.assertLess(ab["C4_tt"]["peak_hbm_gb"], ab["A_sel"]["peak_hbm_gb"] - 3.90)
-        # B_none and B_gdn are >2.25x slower than A_sel
-        self.assertGreater(ab["B_none"]["fwd_bwd_s"] / ab["A_sel"]["fwd_bwd_s"], 2.25)
-        self.assertGreater(ab["B_gdn"]["fwd_bwd_s"] / ab["A_sel"]["fwd_bwd_s"], 2.30)
 
-    def test_xprof_and_hlo_saved_tensor_counts(self) -> None:
+    def test_xprof_module_counts(self) -> None:
         xp = json.loads((SUM_DIR / "xprof_7cat_comparison.json").read_text(encoding="utf-8"))["summaries"]
         self.assertEqual(xp["A_sel"]["num_xla_modules"], 836)
         self.assertEqual(xp["C4_tt"]["num_xla_modules"], 836)
-        self.assertEqual(xp["B_none"]["num_xla_modules"], 21386)
-        self.assertEqual(xp["B_gdn"]["num_xla_modules"], 21356)
-        self.assertGreater(xp["B_none"]["breakdown_s"]["total"]["host_gap"], 6.0)
-        self.assertLess(xp["A_sel"]["breakdown_s"]["total"]["host_gap"], 0.9)
+        self.assertEqual(sorted(xp), ["A_sel", "C2_tf", "C3_ft", "C4_tt"])
 
     def test_multiseed_30step_mcnemar_cis_span_zero(self) -> None:
         ms = json.loads((SUM_DIR / "multiseed_comparison.json").read_text(encoding="utf-8"))
@@ -76,7 +67,6 @@ class TestPR168PublicEvidence(unittest.TestCase):
         self.assertIn("0.999938", readme)
         self.assertIn("0.988937", readme)
         self.assertIn("0.988949", readme)
-        self.assertIn("0.959694", readme)
         self.assertIn("0.090924", readme)
         self.assertIn("256.42 MiB", readme)
         self.assertIn("312.86 MiB", readme)

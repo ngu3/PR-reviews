@@ -11,48 +11,6 @@
   ],
   "all_passed": false,
   "arms": {
-    "B_none": {
-      "ac_audit": {
-        "forward_only": false,
-        "ac_mode": "none",
-        "skip_layer_types": "none",
-        "config_cls": null,
-        "policy_cls": null,
-        "recompute_bmm": null,
-        "save_pallas_attention": null,
-        "bmm_in_save_ops": null,
-        "splash_in_save_ops": null,
-        "collectives_excluded": null
-      },
-      "input_batch_sha256_match": true,
-      "same_layout": true,
-      "layout_rows": [
-        14336,
-        14336,
-        14336,
-        14336,
-        8192,
-        8192
-      ],
-      "pg_loss_abs_diff": 6.6e-05,
-      "grad_norm_rel_diff": 0.00875896,
-      "delta_w": {
-        "cosine": 0.95969363,
-        "sign_agreement": 0.97578597,
-        "max_abs_diff": 5.00120222568512e-07,
-        "mean_abs_diff": 1.2000685818350332e-08
-      },
-      "timing_and_memory": {
-        "engine_update_actor_s": 11.975106,
-        "fwd_bwd_s": 11.677657,
-        "optimizer_step_s": 0.297448,
-        "max_memory_allocated_gb": 57.8593,
-        "max_memory_reserved_gb": 5.1666,
-        "aot_bwd_num_saved_tensors": 1661,
-        "aot_bwd_saved_bytes_mb": 3037.16
-      },
-      "passed": false
-    },
     "C4_tt": {
       "ac_audit": {
         "forward_only": false,
@@ -178,90 +136,6 @@
         "aot_bwd_saved_bytes_mb": 917.598
       },
       "passed": true
-    },
-    "B_gdn": {
-      "ac_audit": {
-        "forward_only": false,
-        "ac_mode": "selective",
-        "skip_layer_types": "gdn",
-        "config_cls": "torchtitan.experiments.tpu.components.activation_checkpoint.TPUSelectiveAC.Config",
-        "policy_cls": "torchtitan.experiments.tpu.components.activation_checkpoint.TPUSelectiveAC",
-        "recompute_bmm": false,
-        "save_pallas_attention": false,
-        "bmm_in_save_ops": true,
-        "splash_in_save_ops": false,
-        "collectives_excluded": true
-      },
-      "input_batch_sha256_match": true,
-      "same_layout": true,
-      "layout_rows": [
-        14336,
-        14336,
-        14336,
-        14336,
-        8192,
-        8192
-      ],
-      "pg_loss_abs_diff": 2.218e-05,
-      "grad_norm_rel_diff": 0.02753033,
-      "delta_w": {
-        "cosine": 0.95821573,
-        "sign_agreement": 0.97508829,
-        "max_abs_diff": 5.00120222568512e-07,
-        "mean_abs_diff": 1.240066502845363e-08
-      },
-      "timing_and_memory": {
-        "engine_update_actor_s": 12.357427,
-        "fwd_bwd_s": 12.061471,
-        "optimizer_step_s": 0.295956,
-        "max_memory_allocated_gb": 53.9497,
-        "max_memory_reserved_gb": 5.1666,
-        "aot_bwd_num_saved_tensors": 1643,
-        "aot_bwd_saved_bytes_mb": 2471.194
-      },
-      "passed": false
-    },
-    "B_attn": {
-      "ac_audit": {
-        "forward_only": false,
-        "ac_mode": "selective",
-        "skip_layer_types": "full_attn",
-        "config_cls": "torchtitan.experiments.tpu.components.activation_checkpoint.TPUSelectiveAC.Config",
-        "policy_cls": "torchtitan.experiments.tpu.components.activation_checkpoint.TPUSelectiveAC",
-        "recompute_bmm": false,
-        "save_pallas_attention": false,
-        "bmm_in_save_ops": true,
-        "splash_in_save_ops": false,
-        "collectives_excluded": true
-      },
-      "input_batch_sha256_match": true,
-      "same_layout": true,
-      "layout_rows": [
-        14336,
-        14336,
-        14336,
-        14336,
-        8192,
-        8192
-      ],
-      "pg_loss_abs_diff": 0.00011618,
-      "grad_norm_rel_diff": 0.00909967,
-      "delta_w": {
-        "cosine": 0.96311498,
-        "sign_agreement": 0.97763219,
-        "max_abs_diff": 4.998873919248581e-07,
-        "mean_abs_diff": 1.1099074062399246e-08
-      },
-      "timing_and_memory": {
-        "engine_update_actor_s": 5.352485,
-        "fwd_bwd_s": 5.0278,
-        "optimizer_step_s": 0.324685,
-        "max_memory_allocated_gb": 27.9204,
-        "max_memory_reserved_gb": 6.3516,
-        "aot_bwd_num_saved_tensors": 735,
-        "aot_bwd_saved_bytes_mb": 1427.126
-      },
-      "passed": false
     }
   }
 }

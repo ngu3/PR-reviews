@@ -1,5 +1,5 @@
---- /tmp/ac_aaf742e4.py	2026-11-16 19:24:59.160906451 +0000
-+++ /tmp/ac_pr168.py	2026-11-16 19:24:59.168906432 +0000
+--- a/torchtitan/experiments/tpu/components/activation_checkpoint.py (aaf742e4)
++++ b/torchtitan/experiments/tpu/components/activation_checkpoint.py (pr168 fac85b8b)
 @@ -49,14 +49,38 @@
  
    TODO: Save the collectives again once torch-tpu accepts a wait on a saved

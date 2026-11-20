@@ -3,7 +3,7 @@
   "tag": "C4_tt",
   "hw_audit": {
     "hostname": "host-48",
-    "nodename": "ng-q35-08b-ac-trainer-0-3",
+    "nodename": "trainer-0-3",
     "rank": "0",
     "local_rank": "0",
     "tpu_worker_id": "3",

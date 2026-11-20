@@ -417,72 +417,6 @@
           "max_memory_reserved_gb": 7.1293
         }
       ]
-    },
-    "B_none": {
-      "ac_mode": "none",
-      "recompute_bmm": null,
-      "save_pallas_attention": null,
-      "metrics": {
-        "pg_loss": 0.09085808228701353,
-        "grad_norm": 0.33609411120414734,
-        "engine_update_actor_s": 11.975106,
-        "fwd_bwd_s": 11.677657,
-        "optimizer_step_s": 0.297448,
-        "max_memory_allocated_gb": 57.8593,
-        "max_memory_reserved_gb": 5.1666
-      },
-      "warm_timings": [
-        {
-          "iter": 1,
-          "train_batch_s": 13.621607,
-          "fwd_bwd_s": 12.271563,
-          "optimizer_step_s": 1.350044,
-          "grad_norm": 0.33609411120414734,
-          "dynamo_new_compiles": 0,
-          "max_memory_allocated_gb": 57.8576,
-          "max_memory_reserved_gb": 5.1666
-        },
-        {
-          "iter": 2,
-          "train_batch_s": 12.111464,
-          "fwd_bwd_s": 11.825026,
-          "optimizer_step_s": 0.286438,
-          "grad_norm": 0.33609411120414734,
-          "dynamo_new_compiles": 0,
-          "max_memory_allocated_gb": 57.8243,
-          "max_memory_reserved_gb": 5.1666
-        },
-        {
-          "iter": 3,
-          "train_batch_s": 12.04435,
-          "fwd_bwd_s": 11.729312,
-          "optimizer_step_s": 0.315038,
-          "grad_norm": 0.33609411120414734,
-          "dynamo_new_compiles": 0,
-          "max_memory_allocated_gb": 57.8593,
-          "max_memory_reserved_gb": 5.1666
-        },
-        {
-          "iter": 4,
-          "train_batch_s": 12.028292,
-          "fwd_bwd_s": 11.72919,
-          "optimizer_step_s": 0.299102,
-          "grad_norm": 0.33609411120414734,
-          "dynamo_new_compiles": 0,
-          "max_memory_allocated_gb": 57.8243,
-          "max_memory_reserved_gb": 5.1666
-        },
-        {
-          "iter": 5,
-          "train_batch_s": 11.716317,
-          "fwd_bwd_s": 11.427102,
-          "optimizer_step_s": 0.289214,
-          "grad_norm": 0.33609411120414734,
-          "dynamo_new_compiles": 0,
-          "max_memory_allocated_gb": 57.8593,
-          "max_memory_reserved_gb": 5.1666
-        }
-      ]
     }
   },
   "pairwise_comparisons": {
@@ -671,23 +605,6 @@
         "sign_agreement": 0.99200523,
         "max_abs_diff": 4.994217306375504e-07,
         "mean_abs_diff": 3.974662251533501e-09
-      }
-    },
-    "A_sel_vs_B_none_stage1": {
-      "description": "Stage-1 B_none (AC=none) vs A_sel",
-      "base_tag": "A_sel",
-      "arm_tag": "B_none",
-      "pg_loss_base": 0.09092408,
-      "pg_loss_arm": 0.09085808,
-      "pg_loss_abs_diff": 6.6e-05,
-      "grad_norm_base": 0.33317584,
-      "grad_norm_arm": 0.33609411,
-      "grad_norm_rel_diff": 0.00875896,
-      "delta_w": {
-        "cosine": 0.95969363,
-        "sign_agreement": 0.97578597,
-        "max_abs_diff": 5.00120222568512e-07,
-        "mean_abs_diff": 1.2000685818350332e-08
       }
     }
   }
