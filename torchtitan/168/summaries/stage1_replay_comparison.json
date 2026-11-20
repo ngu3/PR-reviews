@@ -21,7 +21,6 @@
       "ac_audit": {
         "forward_only": false,
         "ac_mode": "selective",
-        "skip_layer_types": "none",
         "config_cls": "torchtitan.experiments.tpu.components.activation_checkpoint.TPUSelectiveAC.Config",
         "policy_cls": "torchtitan.experiments.tpu.components.activation_checkpoint.TPUSelectiveAC",
         "recompute_bmm": true,
@@ -63,7 +62,6 @@
       "ac_audit": {
         "forward_only": false,
         "ac_mode": "selective",
-        "skip_layer_types": "none",
         "config_cls": "torchtitan.experiments.tpu.components.activation_checkpoint.TPUSelectiveAC.Config",
         "policy_cls": "torchtitan.experiments.tpu.components.activation_checkpoint.TPUSelectiveAC",
         "recompute_bmm": true,
@@ -105,7 +103,6 @@
       "ac_audit": {
         "forward_only": false,
         "ac_mode": "selective",
-        "skip_layer_types": "none",
         "config_cls": "torchtitan.experiments.tpu.components.activation_checkpoint.TPUSelectiveAC.Config",
         "policy_cls": "torchtitan.experiments.tpu.components.activation_checkpoint.TPUSelectiveAC",
         "recompute_bmm": false,
