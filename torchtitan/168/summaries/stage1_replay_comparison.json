@@ -1,4 +1,10 @@
 {
+  "pass_criteria": {
+    "pg_loss_abs_diff_max": 0.0001,
+    "grad_norm_rel_diff_max": 0.001,
+    "delta_w_cosine_min": 0.9999,
+    "same_layout_required": true
+  },
   "baseline": "A_sel",
   "input_batch_sha256": "e3d67e4fccb724b49b0a150daa22f1bcd695f0a5cca23e2b31719ac20be46fc1",
   "baseline_layout_rows": [

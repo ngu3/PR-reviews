@@ -8,7 +8,7 @@ We tested both flags of `TPUSelectiveAC` on TPU v7x with Qwen3.5-0.8B GRPO train
 
 - Both flags behave as described and compose.
 - With both on (`C4_tt`), the replay `fwd_bwd` drops from 5.130 s to 4.910 s (−4.3%), and peak trainer HBM drops by 4.05 GB (−16.8%).
-- In end-to-end training, peak HBM drops by 3.49 GB (−14.8%). The step time change is within run-to-run noise.
+- In end-to-end training, peak HBM drops by 3.49 GB (−14.9%). The step time change (−0.29 s) is smaller than the run-to-run SD.
 - `save_pallas_attention` alone stays within the replay's run-to-run noise floor.
 - `recompute_bmm` gives a small, reproducible numerical difference in one training step (see §2.1).
 - Over 3 seeds × 30 steps we detected no accuracy difference (pooled step-30 difference −0.73 pp, 95% CI [−1.98, +0.52]). This does not prove equivalence.
@@ -17,18 +17,22 @@ We tested both flags of `TPUSelectiveAC` on TPU v7x with Qwen3.5-0.8B GRPO train
 
 ## 1. Setup
 
+Recipe values and versions are in [`summaries/run_setup.json`](summaries/run_setup.json).
+
 - **Hardware.** 32 TPU v7x chips per run:
-  - 16 trainer chips (one `2x2x4` slice, 32 logical devices, FSDP2 `dp=32`, per-block `torch.compile` in `eager_blocks` mode);
-  - 16 rollout chips (`4 × 2x2x1`, 16 vLLM engines with TP=2).
-  - All replay arms ran on the same trainer slice.
+  - 16 trainer chips (4 hosts, one `2x2x4` slice, 32 devices; TP = CP = 1, so FSDP2 over 32 ranks);
+  - 16 rollout chips (4 hosts, 16 vLLM engines with TP=2).
+  - All replay arms ran on the same trainer hosts (`tpu_worker_hostnames` in `summaries/rank0_warm_timings_*.json`). The 30-step runs each ran on their own hosts (`trainer_nodes` in `summaries/multiseed_comparison.json`).
 - **Model and workload.**
-  - Model: `Qwen/Qwen3.5-0.8B` (24 layers = 18 Gated DeltaNet (GDN) + 6 full-attention layers with Pallas splash attention, `model_kernels=none`, i.e. the XLA GDN path).
-  - Data: GSM8K, 128 prompts × 16 rollouts per step, max prompt / response 256 / 4,096 tokens, `lr=2.5e-6`.
+  - Model: `Qwen/Qwen3.5-0.8B` at revision `2fc06364`, text-only (18 Gated DeltaNet (GDN) layers and 6 full-attention layers with Pallas splash attention, per the model's Hugging Face config). `model_kernels=none`, i.e. the XLA GDN path.
+  - Data: GSM8K, 128 prompts × 16 rollouts per step, max prompt / response 256 / 4,096 tokens, `lr=2.5e-6` with 10 warmup steps.
+  - Plugin base includes fixed-shape micro-batch rows (8192 / 14336 / 16384, plugin #130) and per-block `torch.compile` (plugin #131).
 - **Software.** Python 3.12.12, torch 2.13.0+cpu, torch_tpu 0.2.0, libtpu 0.0.50, jax 0.12.0.1, vllm 0.32.0.
-- **TorchTitan version.** TorchTitan `aaf742e4`, with `torchtitan/experiments/tpu/components/activation_checkpoint.py` replaced by the file from this PR:
-  - the file is [`patches/activation_checkpoint_pr168.py`](patches/activation_checkpoint_pr168.py) (SHA-256 `3d4fd13f…`), with the diff in [`patches/torchtitan-pr168-activation-checkpoint.diff`](patches/torchtitan-pr168-activation-checkpoint.diff);
-  - each run checked the file and the resulting policy (`recompute_bmm`, `save_pallas_attention`, whether `aten.bmm` / splash are in the save set) at startup.
-- **GDN loop version.** The GDN chunk loop in `aaf742e4` takes each chunk from one `unbind` before the loop. On `main` the loop indexes each chunk inside the loop. The saved-tensor and `bmm` counts below are from `aaf742e4`; we did not measure them on `main`. This matches the caveat in the PR description.
+- **TorchTitan version.** TorchTitan `aaf742e4`, where `TPUSelectiveAC` lives at `torchtitan/experiments/tpu/activation_checkpoint.py`.
+  - The file from this PR ([`patches/activation_checkpoint_pr168.py`](patches/activation_checkpoint_pr168.py), SHA-256 `3d4fd13f…`, diff in [`patches/torchtitan-pr168-activation-checkpoint.diff`](patches/torchtitan-pr168-activation-checkpoint.diff)) was installed at that path and at the PR's `components/` path.
+  - The plugin was patched to import `TPUSelectiveAC` from either path (failing if it resolves to core `SelectiveAC`) and to pass the two flags into `TPUSelectiveAC.Config`.
+  - Each run logged the resolved policy at startup: config class, `recompute_bmm`, `save_pallas_attention`, and whether `aten.bmm` / splash are in the save set (`ac_audit` in `summaries/rank0_warm_timings_*.json`, `ac_audit_line` in `summaries/multiseed_comparison.json`).
+- **GDN loop version.** In `aaf742e4`, `torchtitan/experiments/tpu/qwen3_5/gated_delta.py` runs the chunk loop in `_inter_chunk_recurrence` (L236–L240) on chunks split by one `unbind` before the loop. On `main` the loop is inlined in `chunked_gated_delta` and indexes each chunk inside the loop. The saved-tensor and `bmm` counts below are from `aaf742e4`; we did not measure them on `main`. This matches the caveat in the PR description.
 
 ## 2. Fixed-batch 2×2 replay
 
@@ -36,20 +40,22 @@ We tested both flags of `TPUSelectiveAC` on TPU v7x with Qwen3.5-0.8B GRPO train
 - **Micro-batch layout.** Locked to `[14336, 14336, 14336, 14336, 8192, 8192]`.
 - **Procedure.** Each arm ran 1 compile step, then 5 timed iterations with the profiler off, then 1 iteration with XProf and FX / HLO dumps.
 
-Data: [`summaries/stage1_replay_comparison.json`](summaries/stage1_replay_comparison.json), [`summaries/ab_compile_token_summary.json`](summaries/ab_compile_token_summary.json), [`summaries/hlo_fx_comparison_14336.json`](summaries/hlo_fx_comparison_14336.json), [`summaries/xprof_7cat_comparison.json`](summaries/xprof_7cat_comparison.json), [`summaries/rank0_warm_timings_*.json`](summaries/).
+Data: [`summaries/stage1_replay_comparison.json`](summaries/stage1_replay_comparison.json), [`summaries/ab_compile_token_summary.json`](summaries/ab_compile_token_summary.json), [`summaries/aot_graph_stats.json`](summaries/aot_graph_stats.json), [`summaries/hlo_fx_comparison_14336.json`](summaries/hlo_fx_comparison_14336.json), [`summaries/xprof_7cat_comparison.json`](summaries/xprof_7cat_comparison.json), [`summaries/rank0_warm_timings_*.json`](summaries/).
 
-| Arm | `recompute_bmm` | `save_pallas_attention` | GDN saved tensors / layer (row 14336) | Full-attn saved tensors / layer | Splash calls in backward | `fwd_bwd` mean (s) | vs. `A_sel` | Peak HBM (GB) | `pg_loss` / `grad_norm` |
+Saved-tensor and splash counts are from the AOT FX graphs at row 14336. "Splash calls in backward" counts Pallas splash kernels in the full-attention backward graph (forward kernel re-run + backward kernel).
+
+| Arm | `recompute_bmm` | `save_pallas_attention` | GDN saved tensors / layer | Full-attn saved tensors / layer | Splash calls in backward | `fwd_bwd` mean (s) | vs. `A_sel` | Peak HBM (GB) | `pg_loss` / `grad_norm` |
 |---|:---:|:---:|---:|---:|---:|---:|---:|---:|---:|
 | `A_sel` (baseline) | F | F | 699 (604.74 MiB) | 18 (256.42 MiB) | 2 | 5.1302 | — | 24.10 | 0.090924 / 0.333176 |
 | `C3_ft` | F | **T** | 699 (604.74 MiB) | **20 (312.86 MiB)** | **1** | 5.0412 | −0.089 s (−1.7%) | 24.43 (+0.32) | 0.090924 / 0.333170 |
 | `C2_tf` | **T** | F | **26 (269.24 MiB)** | 18 (256.42 MiB) | 2 | 4.9796 | −0.151 s (−2.9%) | **19.70 (−4.40)** | 0.090961 / 0.332724 |
 | **`C4_tt`** | **T** | **T** | **26 (269.24 MiB)** | **20 (312.86 MiB)** | **1** | **4.9099** | **−0.220 s (−4.3%)** | **20.06 (−4.05)** | 0.090961 / 0.332724 |
 
-All four arms ran 836 XLA modules per step.
+All four arms ran 836 XLA modules per step. `fwd_bwd` is the mean of timed iterations 2–5 on rank 0 (iteration 1 excluded); peak HBM is the largest `max_memory_allocated` on rank 0 over the timed iterations. At row 8192 the GDN saved tensors per layer are 411 without and 26 with `recompute_bmm`.
 
 ![2x2 replay and saved activations](figures/pr168_fig1_factorial_replay.png)
 
-*Left: replay `fwd_bwd` (mean, min–max over 5 iterations) and peak HBM. Right: saved activations per GDN and full-attention layer at row 14,336.*
+*Left: replay `fwd_bwd` (bar: mean of iterations 2–5; whiskers: min–max over all 5 timed iterations, rank 0) and peak HBM. Right: saved activations per GDN and full-attention layer at row 14,336.*
 
 ### 2.1 Numerics against the run-to-run noise floor
 
@@ -65,9 +71,9 @@ Data: [`summaries/noise_floor_comparison.json`](summaries/noise_floor_comparison
 
 - **`save_pallas_attention`.** `A_sel` vs. `C3_ft` is within the `A_sel` repeat floor (0.999960 vs. 0.999938), and adding it to `recompute_bmm` changes nothing bit-for-bit.
 - **`recompute_bmm`.** It changes the single-step result by more than the noise floor (ΔW cosine 0.9889). The change is reproducible: `C4_tt` repeats are bit-identical.
-  - The likely reason is the one in the PR description: recomputed ops are compiled into the backward program, where XLA fuses them differently (backward HLO fusions at row 14336 go from 2,286 to 2,833).
+  - The likely reason is the one in the PR description: recomputed ops are compiled into the backward program, where XLA fuses them differently (GDN backward HLO fusions at row 14336 go from 2,286 to 2,833).
   - We did not isolate which fusion changes the values.
-  - The tight equivalence flag in `stage1_replay_comparison.json` (`passed`) is true for `C3_ft` and false for `C2_tf` / `C4_tt` for this reason.
+  - The replay harness's tight equivalence check (`pass_criteria` in `stage1_replay_comparison.json`: `pg_loss` diff ≤ 1e-4, `grad_norm` rel diff ≤ 1e-3, ΔW cosine ≥ 0.9999) passes for `C3_ft` and fails for `C2_tf` / `C4_tt`, on `grad_norm` (1.36e-3) and ΔW cosine (0.9889).
   - The multi-seed run in §3 checks whether this matters for training.
 
 ### 2.2 Where the time and memory go
@@ -75,9 +81,9 @@ Data: [`summaries/noise_floor_comparison.json`](summaries/noise_floor_comparison
 - **`recompute_bmm`.** It removes `aten.bmm.default` from the save set.
   - In `aaf742e4`'s GDN chunk loop (row 14336) the forward runs 673 small `bmm` per layer, and selective AC saved each output.
   - Recomputing them cuts saved tensors per GDN layer from 699 (604.74 MiB) to 26 (269.24 MiB), about 5.9 GiB less across 18 layers.
-  - This matches the PR's `27 + 3 * seq_len / 64` formula at 14,336 tokens.
+  - This matches the PR's `27 + 3 * seq_len / 64` formula at 14,336 tokens (699), and at 8,192 tokens (411).
 - **`save_pallas_attention`.** It wraps the save set in the by-name splash-attention matcher (as in `AttentionSavingSelectiveAC`), so the splash forward output and logsumexp are saved (+56.44 MiB per full-attention layer).
-  - Backward no longer re-runs the forward kernel: splash calls in the backward HLO go from 2 to 1.
+  - Backward no longer re-runs the forward kernel: the full-attention backward graph goes from one splash forward + one splash backward call to only the backward call (`summaries/aot_graph_stats.json`).
   - XProf full-attention backward time drops from 0.4982 s to 0.4276 s (−0.0706 s in `C3_ft`, −0.0715 s in `C4_tt`), consistent with the −0.089 s replay gain.
 
 ## 3. Multi-seed 30-step GSM8K
@@ -120,9 +126,9 @@ Seed 1 also has an earlier `A_sel` run (`a_sel_s1_manifest`: same arm and seed, 
   - MoE models;
   - context parallelism.
 - **TorchTitan version.** `aaf742e4` with this PR's file swapped in, not `main` (see §1). Counts on `main` may differ.
-- **Compile mode and buckets.** Per-block `torch.compile` (`eager_blocks`). Token buckets used in steady state were 8192 and 14336; 16384 was pre-warmed but not selected.
+- **Compile mode and buckets.** Per-block `torch.compile` (plugin #131). In steps 4–30 of the 30-step runs only the 8192 and 14336 row buckets were used; 16384 was pre-warmed but never selected (`row_bucket_counts_4_30`, `prewarm_costs_s`).
 - **Numerics.** Single-step ΔW checks used one frozen batch.
-- **Integration note for callers.** At the time of testing (2026-11-17), `verl-hardware-plugin`'s TorchTitan TPU engine imported `TPUSelectiveAC` from the old module path `torchtitan.experiments.tpu.activation_checkpoint` inside a `try / except ImportError` that falls back to core `SelectiveAC`. A caller wiring these flags should import from `torchtitan.experiments.tpu.components.activation_checkpoint` and fail closed instead of silently falling back.
+- **Integration note for callers.** In the `verl-hardware-plugin` commit we started from (`1b9056f5`), the TorchTitan TPU engine imported `TPUSelectiveAC` from the old module path `torchtitan.experiments.tpu.activation_checkpoint` and, on `ImportError`, used core `SelectiveAC` instead (which saves collectives and has no #168 flags). We patched this for the runs (see §1). A caller wiring these flags should import from `torchtitan.experiments.tpu.components.activation_checkpoint` and fail instead of silently falling back.
 
 ## 5. Reproduce the checks
 

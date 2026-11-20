@@ -1,5 +1,5 @@
---- a/torchtitan/experiments/tpu/components/activation_checkpoint.py (aaf742e4)
-+++ b/torchtitan/experiments/tpu/components/activation_checkpoint.py (pr168 fac85b8b)
+--- a/torchtitan/experiments/tpu/activation_checkpoint.py (aaf742e4)
++++ b/torchtitan/experiments/tpu/components/activation_checkpoint.py (PR head fac85b8b)
 @@ -49,14 +49,38 @@
  
    TODO: Save the collectives again once torch-tpu accepts a wait on a saved
